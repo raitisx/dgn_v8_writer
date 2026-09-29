@@ -1,0 +1,6 @@
+{ "seed": "../../crates/dgnv8-writer/tests/data/gdal_test_dgnv8.dgn", "output": "../T06_cell_named.dgn", "modified_ms": 1790640000000, "allow_3d_model": true, "defaults": {"level": 64, "color": 3, "weight": 1, "font": 1024, "text_height": 1.0},
+  "elements": [
+    { "type": "cell", "name": "ADTI_TEST", "origin": [70, 50], "color": 2, "parts": [
+        { "type": "shape", "points": [[-1, -1], [1, -1], [1, 1], [-1, 1]] },
+        { "type": "line", "points": [[-1, -1], [1, 1]] } ] }
+  ] }

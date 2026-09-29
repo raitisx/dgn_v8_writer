@@ -1,0 +1,19 @@
+{ "seed": "../../crates/dgnv8-writer/tests/data/gdal_test_dgnv8.dgn", "output": "../T07_geometry_id_counter.dgn", "update_file_header_counter": true, "modified_ms": 1790640000000, "allow_3d_model": true, "defaults": {"level": 64, "color": 3, "weight": 1, "font": 1024, "text_height": 1.0},
+  "elements": [
+    { "type": "line", "points": [[20, 0], [30, 5]], "color": 1 },
+    { "type": "line_string", "points": [[20, 10], [25, 15], [30, 10], [35, 15]], "color": 2 },
+    { "type": "shape", "points": [[40, 0], [50, 0], [50, 5], [40, 5]], "color": 3 },
+    { "type": "curve", "points": [[40, 10], [42, 12], [44, 10], [46, 14], [48, 10], [50, 12]], "color": 4 },
+    { "type": "circle", "center": [25, 25], "radius": 4, "color": 5 },
+    { "type": "ellipse", "center": [40, 25], "primary": 5, "secondary": 2.5, "rotation_deg": 30, "color": 6 },
+    { "type": "arc", "center": [55, 25], "primary": 4, "start_deg": 0, "sweep_deg": 90, "color": 1 },
+    { "type": "arc", "center": [65, 25], "primary": 4, "secondary": 2, "rotation_deg": 45, "start_deg": 30, "sweep_deg": -200, "color": 2 },
+    { "type": "complex_chain", "color": 3, "parts": [
+        { "type": "line", "points": [[20, 35], [26, 35]] },
+        { "type": "arc", "center": [26, 37], "primary": 2, "start_deg": -90, "sweep_deg": 180 },
+        { "type": "line", "points": [[26, 39], [20, 39]] } ] },
+    { "type": "complex_shape", "color": 4, "parts": [
+        { "type": "line", "points": [[40, 35], [46, 35]] },
+        { "type": "arc", "center": [46, 37], "primary": 2, "start_deg": -90, "sweep_deg": 180 },
+        { "type": "line_string", "points": [[46, 39], [40, 39], [40, 35]] } ] }
+  ] }

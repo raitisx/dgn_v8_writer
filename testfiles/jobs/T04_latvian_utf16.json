@@ -1,0 +1,4 @@
+{ "seed": "../../crates/dgnv8-writer/tests/data/gdal_test_dgnv8.dgn", "output": "../T04_latvian_utf16.dgn", "modified_ms": 1790640000000, "allow_3d_model": true, "defaults": {"level": 64, "color": 3, "weight": 1, "font": 1024, "text_height": 1.0},
+  "elements": [
+    { "type": "text", "text": "utf16: Rīga ĀČĒĢĪĶĻŅŠŪŽ āčēģīķļņšūž", "origin": [20, 85], "encoding": "utf16" }
+  ] }

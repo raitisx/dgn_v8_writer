@@ -1,0 +1,8 @@
+{ "seed": "../../crates/dgnv8-writer/tests/data/gdal_test_dgnv8.dgn", "output": "../T02_text.dgn", "modified_ms": 1790640000000, "allow_3d_model": true, "defaults": {"level": 64, "color": 3, "weight": 1, "font": 1024, "text_height": 1.0},
+  "elements": [
+    { "type": "text", "text": "ADTI text 1", "origin": [20, 50] },
+    { "type": "text", "text": "Height 2 m", "origin": [20, 54], "height": 2 },
+    { "type": "text", "text": "Rotated 30", "origin": [45, 50], "rotation_deg": 30, "color": 2 },
+    { "type": "text", "text": "Fast font 127", "origin": [20, 60], "font": 127, "color": 4 },
+    { "type": "text_node", "lines": ["Text node line 1", "Text node line 2"], "origin": [20, 70], "node_number": 10, "color": 5 }
+  ] }
