@@ -1,0 +1,30 @@
+[package]
+name = "dgnv8-writer"
+description = "Seed-based DGN V8 writer for 2D ADTI drawings (clean-room, evidence-tracked)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+exclude = ["tests/**"]
+
+[lib]
+name = "dgnv8_writer"
+
+[[bin]]
+name = "dgnv8w"
+path = "src/bin/dgnv8w.rs"
+
+[dependencies]
+cfb = "0.14"
+encoding_rs = "0.8"
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2.0"
+# Same MSRV pin as ezdgn-core: cfb accepts every uuid 1.x, uuid 1.21 needs Rust 1.85.
+uuid = ">=1, <1.21"
+
+[dev-dependencies]
+# Independent reader used only to verify written files (read-back oracle).
+ezdgn-core = { git = "https://github.com/monozukuri-ai/ezdgn", rev = "e7d72db22c9b7f19b0404bb699706378a48d6fb0" }

@@ -1,0 +1,10 @@
+[workspace]
+members = ["crates/dgnv8-writer"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.83"
+license = "MIT"
+repository = "https://github.com/raitisx/dgn_v8_writer"
