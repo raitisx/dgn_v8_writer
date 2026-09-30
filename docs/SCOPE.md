@@ -20,25 +20,27 @@ Elements refer to them by number.
 
 ## Element status
 
-| Element | Type | Status | Evidence |
+| Element | Type | Byte layout | MicroStation V8i SS5 (EXP-0002) |
 | --- | --- | --- | --- |
-| Line (and zero-length point) | 3 | Byte-exact vs sample | FN-E09, golden 37, 39 |
-| Line string | 4 | Byte-exact vs sample | FN-E08, golden 47 |
-| Shape (incl. hole flag) | 6 | Byte-exact vs sample | FN-E08, golden 72–74 |
-| Curve | 11 | Byte-exact vs sample | FN-E08, golden 57 |
-| Circle / ellipse | 15 | Byte-exact vs sample | FN-E10, golden 51, 52 |
-| Arc | 16 | Byte-exact vs sample | FN-E10, golden 54, 55 |
-| Complex chain | 12 | Byte-exact vs sample | FN-X01, golden 61 |
-| Complex shape | 14 | Byte-exact vs sample | FN-X01, golden 82 |
-| Text, ASCII / Windows-1252 | 17 | Byte-exact except font-dependent range | FN-T01–T04, golden 40, 43 |
-| Text with Latvian letters | 17 | Experiment | H-T03, H-T04 |
-| Text node | 7 | Byte-exact vs sample; style block unknown | FN-N01, H-N01 |
-| Cell, unnamed | 2 | Byte-exact vs sample at origin 0,0 | FN-C01 |
-| Cell, named | 2 | Experiment | H-C02 |
-| Shared cell | 35/34 | Not started | — |
+| Line (and zero-length point) | 3 | FN-E09, golden 37, 39 | Displays as written (T01) |
+| Line string | 4 | FN-E08, golden 47 | Displays as written (T01) |
+| Shape (incl. hole flag) | 6 | FN-E08, golden 72–74 | Displays as written (T01) |
+| Curve | 11 | FN-E08, golden 57 | Displays as written (T01) |
+| Circle / ellipse | 15 | FN-E10, golden 51, 52 | Displays as written (T01) |
+| Arc | 16 | FN-E10, golden 54, 55 | Displays as written (T01) |
+| Complex chain | 12 | FN-X01, golden 61 | Recognised with components (T01, T07) |
+| Complex shape | 14 | FN-X01, golden 82 | Recognised with components (T01, T07) |
+| Text, ASCII | 17 | FN-T01–T04, golden 40, 43 | Correct; font, size, angle shown (T02) |
+| Text with Latvian letters | 17 | FN-T05 (UTF-16) | Correct (T04) |
+| Text justification other than Left Top | 17 | H-T05 | Pending (T08) |
+| Text weight | 17 | FN-E11 | Written weight not shown (T02); pending T08 |
+| Text node | 7 | FN-N01; style block unknown (H-N01) | Both lines display (T02) |
+| Cell, unnamed | 2 | FN-C01 | Origin, scale, angle, element count correct (T05) |
+| Cell, named | 2 | FN-C02 | Name shown (T06) |
+| Shared cell | 35/34 | — | Not started |
 
-"Byte-exact vs sample" means the encoder reproduces GDAL's ODA-produced
-sample. MicroStation acceptance is still pending (EXP-0002) for everything.
+All MicroStation checks so far use GDAL's 3D sample as the seed. The real
+ADTI LKS-2020 2D seed comes next (EXP-0003).
 
 ## Not in scope
 
@@ -48,10 +50,10 @@ reading (use ezdgn).
 
 ## Open questions, in order
 
-1. Does MicroStation accept files written this way (EXP-0002)?
-2. How MicroStation stores Latvian text (EXP-0003 E3).
-3. The text node style block and justification codes (E4).
-4. Cell name and origin layout; shared versus normal cells in ADTI (E4).
-5. The level table, so ADTI level names can be used instead of IDs (E1).
-6. Page size limits for large drawings (E5).
-7. Whether an ID counter must be raised (T01/T07, E2).
+1. Text weight and justification codes (T08).
+2. Whether an ID counter must be raised (new-element check in T01/T07, E2).
+3. The 2D ADTI seed: 2D model flag, global origin, units (EXP-0003 E1).
+4. The text node style block (E4).
+5. Shared versus normal cells in ADTI practice (E4).
+6. The level table, so ADTI level names can be used instead of IDs (E1).
+7. Page size limits for large drawings (E5).
