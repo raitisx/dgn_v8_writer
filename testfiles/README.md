@@ -48,6 +48,28 @@ copies in the private evidence repository (part 2).
 
 Also note your MicroStation product and version (Help > About).
 
+### If a file crashes MicroStation
+
+1. Close every MicroStation or Descartes window, and check that no
+   MicroStation process is left running. Start it again and open the file
+   **as the first file** of the session (File > Open). If it now opens,
+   the crash came from the session, not from the file.
+2. If it crashes again, open the split files one at a time, restarting
+   after each crash. Each contains only one kind of element from T01:
+
+   | File | Contains |
+   | --- | --- |
+   | T01a_line.dgn | line |
+   | T01b_line_string.dgn | line string |
+   | T01c_shape.dgn | shape |
+   | T01d_curve.dgn | curve |
+   | T01e_circle_ellipse.dgn | circle and rotated ellipse |
+   | T01f_arcs.dgn | two arcs |
+   | T01g_complex_chain.dgn | complex chain |
+   | T01h_complex_shape.dgn | complex shape |
+
+   Report which ones open and which crash, with the message text.
+
 ## Part 2: make evidence files in MicroStation
 
 These small files replace guesses with facts. Every file adds exactly one

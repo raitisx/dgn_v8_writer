@@ -1,0 +1,57 @@
+{
+  "seed": "../../crates/dgnv8-writer/tests/data/gdal_test_dgnv8.dgn",
+  "output": "../T01g_complex_chain.dgn",
+  "modified_ms": 1790640000000,
+  "allow_3d_model": true,
+  "defaults": {
+    "level": 64,
+    "color": 3,
+    "weight": 1,
+    "font": 1024,
+    "text_height": 1.0
+  },
+  "elements": [
+    {
+      "type": "complex_chain",
+      "color": 3,
+      "parts": [
+        {
+          "type": "line",
+          "points": [
+            [
+              20,
+              35
+            ],
+            [
+              26,
+              35
+            ]
+          ]
+        },
+        {
+          "type": "arc",
+          "center": [
+            26,
+            37
+          ],
+          "primary": 2,
+          "start_deg": -90,
+          "sweep_deg": 180
+        },
+        {
+          "type": "line",
+          "points": [
+            [
+              26,
+              39
+            ],
+            [
+              20,
+              39
+            ]
+          ]
+        }
+      ]
+    }
+  ]
+}

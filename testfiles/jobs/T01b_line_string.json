@@ -1,0 +1,37 @@
+{
+  "seed": "../../crates/dgnv8-writer/tests/data/gdal_test_dgnv8.dgn",
+  "output": "../T01b_line_string.dgn",
+  "modified_ms": 1790640000000,
+  "allow_3d_model": true,
+  "defaults": {
+    "level": 64,
+    "color": 3,
+    "weight": 1,
+    "font": 1024,
+    "text_height": 1.0
+  },
+  "elements": [
+    {
+      "type": "line_string",
+      "points": [
+        [
+          20,
+          10
+        ],
+        [
+          25,
+          15
+        ],
+        [
+          30,
+          10
+        ],
+        [
+          35,
+          15
+        ]
+      ],
+      "color": 2
+    }
+  ]
+}

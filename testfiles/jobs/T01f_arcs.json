@@ -1,0 +1,39 @@
+{
+  "seed": "../../crates/dgnv8-writer/tests/data/gdal_test_dgnv8.dgn",
+  "output": "../T01f_arcs.dgn",
+  "modified_ms": 1790640000000,
+  "allow_3d_model": true,
+  "defaults": {
+    "level": 64,
+    "color": 3,
+    "weight": 1,
+    "font": 1024,
+    "text_height": 1.0
+  },
+  "elements": [
+    {
+      "type": "arc",
+      "center": [
+        55,
+        25
+      ],
+      "primary": 4,
+      "start_deg": 0,
+      "sweep_deg": 90,
+      "color": 1
+    },
+    {
+      "type": "arc",
+      "center": [
+        65,
+        25
+      ],
+      "primary": 4,
+      "secondary": 2,
+      "rotation_deg": 45,
+      "start_deg": 30,
+      "sweep_deg": -200,
+      "color": 2
+    }
+  ]
+}

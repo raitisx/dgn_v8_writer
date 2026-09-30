@@ -1,0 +1,45 @@
+{
+  "seed": "../../crates/dgnv8-writer/tests/data/gdal_test_dgnv8.dgn",
+  "output": "../T01d_curve.dgn",
+  "modified_ms": 1790640000000,
+  "allow_3d_model": true,
+  "defaults": {
+    "level": 64,
+    "color": 3,
+    "weight": 1,
+    "font": 1024,
+    "text_height": 1.0
+  },
+  "elements": [
+    {
+      "type": "curve",
+      "points": [
+        [
+          40,
+          10
+        ],
+        [
+          42,
+          12
+        ],
+        [
+          44,
+          10
+        ],
+        [
+          46,
+          14
+        ],
+        [
+          48,
+          10
+        ],
+        [
+          50,
+          12
+        ]
+      ],
+      "color": 4
+    }
+  ]
+}

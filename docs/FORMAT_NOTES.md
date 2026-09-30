@@ -41,7 +41,8 @@ Status: Confirmed. A `$N` stream is a 16-byte header of four u32 values
 (record count, format version, page number, population) followed by a zlib
 stream (`78 9c`). An empty page is the header alone. Format version 2 in the
 sample (ezdgn also saw 3). Count and population are equal in every sample.
-Evidence: ezdgn @e7d72db; EXP-0001; unit tests in `page.rs`.
+Evidence: ezdgn @e7d72db; EXP-0001; unit tests in `page.rs`; EXP-0002 T00
+(MicroStation V8i SS5 opens a file whose graphic page this code recompressed).
 
 ### FN-P02 Object prefix
 Status: Provisional. Each object inside an inflated page is preceded by a
@@ -106,7 +107,8 @@ lines, arcs, ellipses, text and text nodes. `0x4000` and `0x8000` are set on
 both sample cell headers, and both cells contain a hole. The writer
 reproduces this pattern and writes plain `0x200` for cells without holes;
 meanings other than 3D and hole are unknown.
-Evidence: EXP-0001; golden tests.
+Evidence: EXP-0001; golden tests; EXP-0002 T00 (MicroStation lists the sample's
+two `0x4000 | 0x8000` cells as "Grouped Hole", not "Cell").
 
 ### FN-E07 Complex elements
 Status: Confirmed. A complex header (types 2, 7, 12, 14) is followed
@@ -203,7 +205,9 @@ same order as the public V7 cell layout — is not yet distinguished from
 ezdgn's (0x70 = origin). Test file T05 places a cell away from the origin.
 Both sample cell headers are on level 0 with colour, weight and style 0;
 the job format defaults cell headers to level 0.
-Evidence: golden test 72; EXP-0002 pending.
+MicroStation lists the two sample cells as "Grouped Hole" (EXP-0002 T00),
+so they are hole groups rather than ordinary named cells.
+Evidence: golden test 72; EXP-0002 T00; T05 pending.
 
 ### H-C02 Cell name
 Status: Hypothesis. The name is stored as a string linkage (FN-L02) with
@@ -230,7 +234,8 @@ Evidence: EXP-0001; unit test `element::tests::string_linkage_matches_fixture_la
 ### FN-M01 Model header stream
 Status: Confirmed. zlib from offset 0; the inflated stream ends with one
 complete type-66 object (sample: u32 1, 4096 zero bytes, object at 0x1004).
-Evidence: ezdgn @e7d72db; EXP-0001.
+Evidence: ezdgn @e7d72db; EXP-0001; EXP-0002 T00 (MicroStation opens a file
+whose `Dgn~Mh` this code recompressed).
 
 ### FN-M02 2D model flag
 Status: Provisional. Type-66 word bit `0x00800000` set = 2D model; clear in

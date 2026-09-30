@@ -1,0 +1,35 @@
+{
+  "seed": "../../crates/dgnv8-writer/tests/data/gdal_test_dgnv8.dgn",
+  "output": "../T01e_circle_ellipse.dgn",
+  "modified_ms": 1790640000000,
+  "allow_3d_model": true,
+  "defaults": {
+    "level": 64,
+    "color": 3,
+    "weight": 1,
+    "font": 1024,
+    "text_height": 1.0
+  },
+  "elements": [
+    {
+      "type": "circle",
+      "center": [
+        25,
+        25
+      ],
+      "radius": 4,
+      "color": 5
+    },
+    {
+      "type": "ellipse",
+      "center": [
+        40,
+        25
+      ],
+      "primary": 5,
+      "secondary": 2.5,
+      "rotation_deg": 30,
+      "color": 6
+    }
+  ]
+}

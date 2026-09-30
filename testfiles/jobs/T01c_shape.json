@@ -1,0 +1,37 @@
+{
+  "seed": "../../crates/dgnv8-writer/tests/data/gdal_test_dgnv8.dgn",
+  "output": "../T01c_shape.dgn",
+  "modified_ms": 1790640000000,
+  "allow_3d_model": true,
+  "defaults": {
+    "level": 64,
+    "color": 3,
+    "weight": 1,
+    "font": 1024,
+    "text_height": 1.0
+  },
+  "elements": [
+    {
+      "type": "shape",
+      "points": [
+        [
+          40,
+          0
+        ],
+        [
+          50,
+          0
+        ],
+        [
+          50,
+          5
+        ],
+        [
+          40,
+          5
+        ]
+      ],
+      "color": 3
+    }
+  ]
+}

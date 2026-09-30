@@ -1,0 +1,61 @@
+{
+  "seed": "../../crates/dgnv8-writer/tests/data/gdal_test_dgnv8.dgn",
+  "output": "../T01h_complex_shape.dgn",
+  "modified_ms": 1790640000000,
+  "allow_3d_model": true,
+  "defaults": {
+    "level": 64,
+    "color": 3,
+    "weight": 1,
+    "font": 1024,
+    "text_height": 1.0
+  },
+  "elements": [
+    {
+      "type": "complex_shape",
+      "color": 4,
+      "parts": [
+        {
+          "type": "line",
+          "points": [
+            [
+              40,
+              35
+            ],
+            [
+              46,
+              35
+            ]
+          ]
+        },
+        {
+          "type": "arc",
+          "center": [
+            46,
+            37
+          ],
+          "primary": 2,
+          "start_deg": -90,
+          "sweep_deg": 180
+        },
+        {
+          "type": "line_string",
+          "points": [
+            [
+              46,
+              39
+            ],
+            [
+              40,
+              39
+            ],
+            [
+              40,
+              35
+            ]
+          ]
+        }
+      ]
+    }
+  ]
+}
