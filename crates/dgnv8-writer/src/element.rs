@@ -24,11 +24,12 @@ pub const TYPE_TEXT: u8 = 17;
 pub const COMMON_HEADER_BYTES: usize = 0x68;
 /// Properties word seen on every graphical object of the fixture (FN-E05).
 pub const DEFAULT_PROPERTIES: u32 = 0x8000_0000;
+/// "New" property: MicroStation shows New when set (FN-E06). The GDAL
+/// sample has it on some objects; this writer never sets it by default.
+pub const FLAG_NEW: u32 = 0x0000_0200;
 /// Flag bit for a 3D object (FN-E06). Never set by this 2D writer.
 pub const FLAG_3D: u32 = 0x0000_0800;
-/// Flag observed on 2D line strings, shapes, curves and cells (FN-E06).
-pub const FLAG_2D_VERTEX_LIST: u32 = 0x0000_0200;
-/// Flag observed on hole shapes inside a cell (FN-E06).
+/// Hole shape, for example inside a grouped hole (FN-E06).
 pub const FLAG_HOLE: u32 = 0x0000_8000;
 /// Text size multiplier: UOR = raw * 6 / 1000 (FN-T01). Written as
 /// `uor * (1000 / 6)`, which reproduces the fixture's bits exactly.
@@ -55,7 +56,7 @@ impl Role {
     }
 }
 
-/// Display attributes written into the common header (FN-E04).
+/// Display attributes written into the common header (FN-E04, FN-E11).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Symbology {
     pub level: u32,
@@ -75,7 +76,9 @@ pub struct TextData {
     pub height: f64,
     pub width: f64,
     pub font: u32,
-    /// Raw justification code (FN-T03 only knows code 0 = left baseline).
+    /// Raw justification code. 0 = Left Top (FN-T03); other codes are
+    /// assumed to follow the V7 table (H-T05). `origin` is always the
+    /// lower-left of the text, whatever the justification.
     pub justification: u16,
 }
 
@@ -121,7 +124,8 @@ pub enum Geometry {
     ComplexChain(Vec<Element>),
     ComplexShape(Vec<Element>),
     Cell {
-        /// Experimental name linkage (H-C02); `None` writes an unnamed cell.
+        /// Cell name, written as a string linkage (FN-C02); `None` writes an
+        /// unnamed cell.
         name: Option<String>,
         origin: Point2,
         /// Row-major 2x2 matrix (FN-C01 only confirms the identity).
@@ -208,7 +212,7 @@ impl Element {
                 check_vertices("line string", points, 2)?;
                 let (h, p, r) = simple(
                     TYPE_LINE_STRING,
-                    FLAG_2D_VERTEX_LIST,
+                    0,
                     vertex_list(points),
                     Bounds::of_points(points).unwrap(),
                 );
@@ -223,7 +227,7 @@ impl Element {
                 }
                 let (h, p, r) = simple(
                     TYPE_SHAPE,
-                    FLAG_2D_VERTEX_LIST,
+                    0,
                     vertex_list(points),
                     Bounds::of_points(points).unwrap(),
                 );
@@ -233,7 +237,7 @@ impl Element {
                 check_vertices("curve", points, 6)?;
                 let (h, p, r) = simple(
                     TYPE_CURVE,
-                    FLAG_2D_VERTEX_LIST,
+                    0,
                     vertex_list(points),
                     Bounds::of_points(points).unwrap(),
                 );
@@ -368,10 +372,10 @@ impl Element {
                 }
                 push_point(&mut data, *origin);
                 let linkages = match name {
-                    Some(name) => string_linkage(1, name),
+                    Some(name) => string_linkage(1, name), // FN-C02
                     None => Vec::new(),
                 };
-                let (h, p, r) = simple(TYPE_CELL, FLAG_2D_VERTEX_LIST, data, bounds);
+                let (h, p, r) = simple(TYPE_CELL, 0, data, bounds);
                 let h = HeaderFields {
                     role: header_role(role),
                     ..h
@@ -475,8 +479,8 @@ pub fn encode_object(header: &HeaderFields, primary: &[u8], linkages: &[u8]) -> 
     push_u32(&mut out, header.symbology.graphic_group); // FN-E04
     push_u32(&mut out, header.properties); // FN-E05
     push_u32(&mut out, header.flags); // FN-E06
-    push_u32(&mut out, header.symbology.style); // FN-E04
-    push_u32(&mut out, header.symbology.weight); // FN-E04
+    push_u32(&mut out, header.symbology.style); // FN-E11
+    push_u32(&mut out, header.symbology.weight); // FN-E11
     push_u32(&mut out, header.symbology.color); // FN-E04
     let extent = header.range.extent();
     for value in header.range.low.iter().chain(extent.iter()) {

@@ -11,6 +11,7 @@ use std::io::{Cursor, Read};
 
 use dgnv8_writer::element::{
     Element, EncodeContext, Geometry, IdAllocator, Symbology, TextData, FLAG_3D, FLAG_HOLE,
+    FLAG_NEW,
 };
 use dgnv8_writer::page::Page;
 use dgnv8_writer::{Point2, TextEncoding};
@@ -48,6 +49,14 @@ fn simple(geometry: Geometry) -> Element {
         symbology: default_symbology(),
         geometry,
         extra_flags: 0,
+    }
+}
+
+/// Some sample objects carry the "New" property bit (FN-E06).
+fn new_flagged(geometry: Geometry) -> Element {
+    Element {
+        extra_flags: FLAG_NEW,
+        ..simple(geometry)
     }
 }
 
@@ -116,7 +125,7 @@ fn line_39() {
 
 #[test]
 fn line_string_47() {
-    let element = simple(Geometry::LineString(vec![
+    let element = new_flagged(Geometry::LineString(vec![
         p(0.0, 10000.0),
         p(30000.0, 40000.0),
         p(60000.0, 70000.0),
@@ -126,7 +135,7 @@ fn line_string_47() {
 
 #[test]
 fn curve_57() {
-    let element = simple(Geometry::Curve(vec![
+    let element = new_flagged(Geometry::Curve(vec![
         p(0.0, 0.0),
         p(0.0, 10000.0),
         p(10000.0, 10000.0),
@@ -190,7 +199,7 @@ fn text_40_escaped_windows_1252() {
         },
         geometry: Geometry::Text(TextData {
             text: "myTéxt".into(),
-            encoding: TextEncoding::Auto,
+            encoding: TextEncoding::EscapedCp1252,
             origin: p(0.0, 10000.0),
             rotation: -FRAC_PI_4,
             height: 10000.0,
@@ -284,15 +293,16 @@ fn cell_72_with_hole() {
             origin: p(0.0, 0.0),
             transform: [1.0, 0.0, 0.0, 1.0],
             children: vec![
-                simple(Geometry::Shape(square(0.0, 10000.0))),
+                new_flagged(Geometry::Shape(square(0.0, 10000.0))),
                 Element {
                     symbology: default_symbology(),
                     geometry: Geometry::Shape(square(1000.0, 9000.0)),
-                    extra_flags: FLAG_HOLE,
+                    extra_flags: FLAG_NEW | FLAG_HOLE,
                 },
             ],
         },
-        extra_flags: 0xc000,
+        // Grouped hole in the sample: New, 0x4000 and hole bits on the header.
+        extra_flags: FLAG_NEW | 0x4000 | FLAG_HOLE,
     };
     assert_same(&[72, 73, 74], &encode(&cell, 72), &[false; 3]);
 }

@@ -337,9 +337,12 @@ fn to_element(
             }
         }
         GeometrySpec::ComplexChain { parts } | GeometrySpec::ComplexShape { parts } => {
+            // MicroStation draws complex elements with the components'
+            // symbology (EXP-0002 T01), so parts inherit the parent's.
+            let inherited = inherit(defaults, spec);
             let children = parts
                 .iter()
-                .map(|part| to_element(document, defaults, part, placement))
+                .map(|part| to_element(document, &inherited, part, placement))
                 .collect::<Result<Vec<_>>>()?;
             if matches!(spec.geometry, GeometrySpec::ComplexChain { .. }) {
                 Geometry::ComplexChain(children)
@@ -365,9 +368,10 @@ fn to_element(
                 scale: *scale,
                 rotation: rotation_deg.to_radians(),
             };
+            let inherited = inherit(defaults, spec);
             let children = parts
                 .iter()
-                .map(|part| to_element(document, defaults, part, inner))
+                .map(|part| to_element(document, &inherited, part, inner))
                 .collect::<Result<Vec<_>>>()?;
             let (sin_r, cos_r) = inner.rotation.sin_cos();
             Geometry::Cell {
@@ -383,6 +387,19 @@ fn to_element(
         geometry,
         extra_flags,
     })
+}
+
+/// Defaults for the parts of a complex element or cell: the parent's
+/// explicit symbology, else the job defaults. A cell's own default level 0
+/// is not passed on.
+fn inherit(defaults: &Defaults, parent: &ElementSpec) -> Defaults {
+    Defaults {
+        level: parent.level.unwrap_or(defaults.level),
+        color: parent.color.unwrap_or(defaults.color),
+        weight: parent.weight.unwrap_or(defaults.weight),
+        style: parent.style.unwrap_or(defaults.style),
+        ..defaults.clone()
+    }
 }
 
 fn text_data(
@@ -404,5 +421,57 @@ fn text_data(
         width: distance(width),
         font: style.font.unwrap_or(defaults.font),
         justification: style.justification.unwrap_or(0),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const SEED: &[u8] = include_bytes!("../tests/data/gdal_test_dgnv8.dgn");
+
+    fn build(json: &str) -> Element {
+        let document = Document::from_seed_bytes(SEED.to_vec(), None).unwrap();
+        let spec: ElementSpec = serde_json::from_str(json).unwrap();
+        let defaults = Defaults {
+            color: 3,
+            ..Defaults::default()
+        };
+        to_element(&document, &defaults, &spec, Placement::IDENTITY).unwrap()
+    }
+
+    fn part_colors(element: &Element) -> Vec<u32> {
+        match &element.geometry {
+            Geometry::ComplexShape(parts)
+            | Geometry::Cell {
+                children: parts, ..
+            } => parts.iter().map(|part| part.symbology.color).collect(),
+            other => panic!("unexpected {other:?}"),
+        }
+    }
+
+    #[test]
+    fn complex_parts_inherit_parent_symbology() {
+        let shape = build(
+            r#"{ "type": "complex_shape", "color": 4, "weight": 2, "parts": [
+                { "type": "line", "points": [[0, 0], [1, 0]] },
+                { "type": "line", "points": [[1, 0], [0, 0]], "color": 6 } ] }"#,
+        );
+        assert_eq!(shape.symbology.color, 4);
+        assert_eq!(part_colors(&shape), [4, 6]);
+    }
+
+    #[test]
+    fn cell_header_level_zero_is_not_inherited() {
+        let cell = build(
+            r#"{ "type": "cell", "origin": [5, 5], "color": 2, "parts": [
+                { "type": "line", "points": [[0, 0], [1, 0]] } ] }"#,
+        );
+        assert_eq!(cell.symbology.level, 0);
+        assert_eq!(part_colors(&cell), [2]);
+        match &cell.geometry {
+            Geometry::Cell { children, .. } => assert_eq!(children[0].symbology.level, 64),
+            other => panic!("unexpected {other:?}"),
+        }
     }
 }

@@ -1,0 +1,14 @@
+{ "seed": "../../crates/dgnv8-writer/tests/data/gdal_test_dgnv8.dgn", "output": "../T08_symbology_justification.dgn",
+  "modified_ms": 1790640000000, "allow_3d_model": true,
+  "defaults": {"level": 64, "color": 3, "weight": 0, "style": 0, "font": 1024, "text_height": 1.0},
+  "elements": [
+    { "type": "line", "points": [[20, 0], [40, 0]], "color": 1, "style": 0, "weight": 5 },
+    { "type": "line", "points": [[20, 3], [40, 3]], "color": 2, "style": 2, "weight": 0 },
+    { "type": "line", "points": [[20, 6], [40, 6]], "color": 3, "style": 0, "weight": 0 },
+    { "type": "text", "text": "Weight 5 text", "origin": [20, 9], "weight": 5, "color": 4 },
+    { "type": "text", "text": "J1", "origin": [20, 15], "justification": 1, "color": 5 },
+    { "type": "text", "text": "J2", "origin": [25, 15], "justification": 2, "color": 5 },
+    { "type": "text", "text": "J7", "origin": [30, 15], "justification": 7, "color": 5 },
+    { "type": "text", "text": "J12", "origin": [35, 15], "justification": 12, "color": 5 },
+    { "type": "text", "text": "J14", "origin": [40, 15], "justification": 14, "color": 5 }
+  ] }

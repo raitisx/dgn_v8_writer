@@ -37,6 +37,7 @@ Then the file-specific checks:
 | T05_cell_unnamed.dgn | Unnamed cell: cross + circle at 60,50 | Is it one cell element? What origin does MicroStation report? (should be 60,50) |
 | T06_cell_named.dgn | Cell "ADTI_TEST": square + diagonal at 70,50 | Is the name ADTI_TEST shown? Origin 70,50? |
 | T07_geometry_id_counter.dgn | Same as T01, plus one header counter changed (experiment) | Opens? Place one new line and write down its **Element ID**. |
+| T08_symbology_justification.dgn | 3 lines with different line style and weight, a text with weight 5, and texts J1, J2, J7, J12, J14 with justification codes 1, 2, 7, 12, 14 | For each line: **Weight** and **Line Style**. For the weight-5 text: **Weight**. For each J text: **Justification** and **User Origin**. |
 
 T03, T04 and T06 are experiments. If one fails to open or shows garbage,
 that is a useful result, not a problem.

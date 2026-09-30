@@ -1,9 +1,9 @@
 //! Encoding of the text payload stored in type-17 text elements.
 //!
-//! Only two forms are evidenced (FN-T02): plain ASCII bytes, and the marker
-//! `ff fe 01 00` followed by Windows-1252 bytes. Latvian letters such as
-//! `ā č ē ģ ī ķ ļ ņ ū` are not in Windows-1252, so the other forms below are
-//! experiments (H-T03, H-T04) until a MicroStation-made file confirms one.
+//! Evidenced forms: plain ASCII, `ff fe 01 00` + Windows-1252 bytes (FN-T02)
+//! and `ff fd` + UTF-16LE (FN-T05). MicroStation V8i displays Latvian letters
+//! correctly only in the UTF-16 form; the escaped form is read as
+//! Windows-1252 whatever bytes follow (H-T03, rejected).
 
 use crate::error::{Result, WriteError};
 
@@ -16,17 +16,17 @@ pub const UTF16_MARKER: [u8; 2] = [0xff, 0xfd];
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum TextEncoding {
-    /// ASCII when possible, else escaped Windows-1252; anything else is an
-    /// error until the storage of Latvian text is confirmed.
+    /// Plain ASCII when possible, otherwise UTF-16 (FN-T05).
     #[default]
     Auto,
     /// Plain 7-bit ASCII (FN-T02).
     Ascii,
-    /// `ff fe 01 00` + Windows-1252 bytes (FN-T02).
+    /// `ff fe 01 00` + Windows-1252 bytes, as in the GDAL sample (FN-T02).
     EscapedCp1252,
-    /// EXPERIMENT H-T03: `ff fe 01 00` + Windows-1257 (Baltic) bytes.
+    /// REJECTED experiment H-T03, kept only to rebuild test file T03:
+    /// MicroStation shows these bytes as Windows-1252, not Baltic.
     EscapedCp1257,
-    /// EXPERIMENT H-T04: `ff fd` + UTF-16LE, as used by string linkages.
+    /// `ff fd` + UTF-16LE (FN-T05). Correct for Latvian letters.
     Utf16,
 }
 
@@ -37,12 +37,7 @@ pub fn encode_text(text: &str, encoding: TextEncoding) -> Result<Vec<u8>> {
             if text.is_ascii() {
                 Ok(text.as_bytes().to_vec())
             } else {
-                encode_text(text, TextEncoding::EscapedCp1252).map_err(|_| {
-                    WriteError::InvalidElement(format!(
-                        "text {text:?} is not representable in Windows-1252; choose an \
-                         experimental encoding (escaped-cp1257 or utf16) explicitly"
-                    ))
-                })
+                encode_text(text, TextEncoding::Utf16)
             }
         }
         TextEncoding::Ascii => {
@@ -86,7 +81,7 @@ mod tests {
     #[test]
     fn reproduces_fixture_escaped_text() {
         // Fixture text object 40 stores "myTéxt" as ff fe 01 00 6d 79 54 e9 78 74.
-        let bytes = encode_text("myTéxt", TextEncoding::Auto).unwrap();
+        let bytes = encode_text("myTéxt", TextEncoding::EscapedCp1252).unwrap();
         assert_eq!(
             bytes,
             [0xff, 0xfe, 0x01, 0x00, 0x6d, 0x79, 0x54, 0xe9, 0x78, 0x74]
@@ -94,11 +89,20 @@ mod tests {
     }
 
     #[test]
-    fn auto_rejects_latvian_letters() {
-        assert!(encode_text("Rīga", TextEncoding::Auto).is_err());
+    fn auto_uses_utf16_for_latvian_letters() {
+        assert_eq!(encode_text("Rīga", TextEncoding::Auto).unwrap(), {
+            let mut expected = vec![0xff, 0xfd];
+            for unit in "Rīga".encode_utf16() {
+                expected.extend_from_slice(&unit.to_le_bytes());
+            }
+            expected
+        });
+        assert_eq!(
+            encode_text("ā", TextEncoding::Utf16).unwrap(),
+            [0xff, 0xfd, 0x01, 0x01]
+        );
+        assert_eq!(encode_text("ADTI", TextEncoding::Auto).unwrap(), b"ADTI");
         let baltic = encode_text("Rīga", TextEncoding::EscapedCp1257).unwrap();
         assert_eq!(&baltic[4..], &[b'R', 0xee, b'g', b'a']);
-        let utf16 = encode_text("ā", TextEncoding::Utf16).unwrap();
-        assert_eq!(utf16, [0xff, 0xfd, 0x01, 0x01]);
     }
 }
