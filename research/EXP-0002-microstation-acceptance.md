@@ -6,7 +6,7 @@
 | Performed by | raitisx (licensed seat); screenshots shared in the Claude session |
 | Product | Bentley Descartes StandAlone V8i (SELECTseries 5), MicroStation V8i SS5 platform, with an ADTI workspace |
 | Files tested | Commit `d0923e0` (hashes below), plus T08 from commit `d7de36c` |
-| Status | T00–T08 done; text weight and the new-element ID check pending |
+| Status | T00–T08 and the new-element ID check done; text weight pending |
 | Decides | FN-C01, FN-C02, FN-T05, H-T03, H-T05, H-H02, FN-E11; confirms FN-E*, FN-T*, FN-N01 in MicroStation |
 
 Test files and instructions: [`testfiles/README.md`](../testfiles/README.md).
@@ -28,8 +28,8 @@ The files are built from GDAL's test file (EXP-0001) with
 | T07_geometry_id_counter (`d0492463`) | Yes | Same as T01; Line Style 0 and Weight 1 across the selection (obs. 10) |
 | T08_symbology_justification (`b7e5beb0`) | Yes | Line style and weight as written on all three lines; J1–J14 show five different justifications, J7 = Center Center (obs. 11–12) |
 
-Still to do: place one new line in T01 and in T07 and note its Element ID
-(our IDs are 96–111). This decides H-H02.
+New-element ID check (2026-09-30): a line placed in T01 after opening got
+Element ID **114**, above our 96–111 (obs. 13).
 
 ## Observations
 
@@ -101,6 +101,13 @@ Still to do: place one new line in T01 and in T07 and note its Element ID
     30, 35, 40, same baseline), so justification does not move a text; it
     only sets the handle MicroStation computes (FN-T03, H-T05).
 
+13. **New element in T01.** MicroStation placed a line with Element ID 114.
+    The file's `Dgn~H` counter was 93 and our highest ID 111, so MicroStation
+    numbers new elements above the highest ID actually present and does not
+    rely on the counter (H-H02: not needed). Its own line shows New (FN-E06),
+    colour, style and weight ByLevel (0), Size 100 words and one linkage: a
+    3D line (152 bytes) plus a 48-byte linkage our elements do not have.
+
 ## Conclusions so far
 
 - MicroStation V8i SS5 accepts seed + append output: recompressed pages,
@@ -114,5 +121,6 @@ Still to do: place one new line in T01 and in T07 and note its Element ID
   7 Center Center). A writer that must place a centred or right-justified
   text at a given point needs the text width as MicroStation computes it
   from the font; left-justified placement needs only the height.
-- Open: weight of the "Weight 5 text" (T08), names of J1, J2, J12, J14, and
-  the ID counter (new-element check in T01/T07).
+- The `Dgn~H` counter does not need updating: MicroStation numbers new
+  elements above the highest ID in the file (obs. 13).
+- Open: weight of the "Weight 5 text" (T08) and names of J1, J2, J12, J14.

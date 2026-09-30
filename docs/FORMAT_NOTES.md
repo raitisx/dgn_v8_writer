@@ -35,12 +35,13 @@ is a storage `/Dgn-Md/#NNNNNN` containing `Dgn~Mh` (model header) and
 Evidence: ezdgn `docs/v8/FORMAT_NOTES.md` @e7d72db; EXP-0001 (stream list).
 
 ### FN-S02 Element IDs are unique across the file
-Status: Provisional. Every object in every object page, and the model header
+Status: Confirmed. Every object in every object page, and the model header
 object, carries a u64 element ID at 0x10. IDs 1–95 are used across `Dgn^Nm`,
 `Dgn^G` and `Dgn~Mh` without duplicates. The writer allocates new IDs from
 `max + 1`.
 MicroStation: shows Element ID 96 for the first appended element (T02, T05,
-T06). Whether MicroStation's own next ID avoids ours is open (H-H02).
+T06), and gives a line placed afterwards ID 114, above our highest (111)
+although the `Dgn~H` counter said 93 (T01).
 Evidence: EXP-0001 (ID inventory); EXP-0002;
 test `roundtrip::appended_elements_read_back_with_ezdgn`.
 
@@ -349,10 +350,12 @@ Evidence: ezdgn @e7d72db; EXP-0001; EXP-0002 T07 (MicroStation opens a file
 whose `Dgn~H` this code recompressed).
 
 ### H-H02 Element ID counter
-Status: Hypothesis. Inflated +0x128 u64 is 93 in the sample (highest ID 95).
-+0x130 holds the same f64 time as the objects. T07 writes the new highest ID
-there and opens fine; T01 leaves it unchanged and also opens. Still open:
-which ID MicroStation gives a newly placed element in T01 and in T07.
-Evidence: EXP-0002 T01, T07 (acceptance only).
+Status: Rejected as a requirement. Inflated +0x128 u64 is 93 in the sample
+(highest ID 95); +0x130 holds the same f64 time as the objects. The writer
+leaves it unchanged by default. MicroStation opens files with or without our
+update (T01, T07), and in T01, with the counter still at 93, it gave a newly
+placed line ID 114, above the highest ID present (111). The switch
+`update_file_header_counter` stays available but is not needed.
+Evidence: EXP-0002 T01, T07.
 
 [MS-CFB]: https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-cfb/

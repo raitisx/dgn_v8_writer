@@ -13,7 +13,8 @@ only:
 
 1. the model's last graphic page (`Dgn^G/$N`): new objects appended;
 2. the model header extents (`Dgn~Mh`): grown to cover the new objects;
-3. only with an experiment switch, the `Dgn~H` ID counter (H-H02).
+3. only with an experiment switch, the `Dgn~H` ID counter (H-H02; MicroStation
+   does not need it).
 
 Levels, colours, line styles, fonts and units all come from the seed.
 Elements refer to them by number.
@@ -52,9 +53,8 @@ reading (use ezdgn).
 ## Open questions, in order
 
 1. Text weight (T08 "Weight 5 text") and names of justification codes 1, 2, 12, 14.
-2. Whether an ID counter must be raised (new-element check in T01/T07, E2).
-3. The 2D ADTI seed: 2D model flag, global origin, units (EXP-0003 E1).
-4. The text node style block (E4).
-5. Shared versus normal cells in ADTI practice (E4).
-6. The level table, so ADTI level names can be used instead of IDs (E1).
-7. Page size limits for large drawings (E5).
+2. The 2D ADTI seed: 2D model flag, global origin, units (EXP-0003 E1).
+3. The text node style block (E4).
+4. Shared versus normal cells in ADTI practice (E4).
+5. The level table, so ADTI level names can be used instead of IDs (E1).
+6. Page size limits for large drawings (E5).
