@@ -5,8 +5,8 @@
 | Date | 2026-09-29 – 2026-09-30 (in progress) |
 | Performed by | raitisx (licensed seat); screenshots shared in the Claude session |
 | Product | Bentley Descartes StandAlone V8i (SELECTseries 5), MicroStation V8i SS5 platform, with an ADTI workspace |
-| Files tested | Commit `d0923e0` (hashes below), plus T08 from a later commit |
-| Status | T00–T07 done; T08 and the new-element ID check pending |
+| Files tested | Commit `d0923e0` (hashes below), plus T08 from commit `d7de36c` |
+| Status | T00–T08 done; text weight and the new-element ID check pending |
 | Decides | FN-C01, FN-C02, FN-T05, H-T03, H-T05, H-H02, FN-E11; confirms FN-E*, FN-T*, FN-N01 in MicroStation |
 
 Test files and instructions: [`testfiles/README.md`](../testfiles/README.md).
@@ -26,7 +26,7 @@ The files are built from GDAL's test file (EXP-0001) with
 | T05_cell_unnamed (`1de544a5`) | Yes | Cell, 3 elements, origin 60,50, angle 0°, scale 1 (obs. 9) |
 | T06_cell_named (`92a634bd`) | Yes | "Cell: ADTI_TEST", 2 elements, 1 linkage, origin 70,50 (obs. 9) |
 | T07_geometry_id_counter (`d0492463`) | Yes | Same as T01; Line Style 0 and Weight 1 across the selection (obs. 10) |
-| T08_symbology_justification | | pending |
+| T08_symbology_justification (`b7e5beb0`) | Yes | Line style and weight as written on all three lines; J1–J14 show five different justifications, J7 = Center Center (obs. 11–12) |
 
 Still to do: place one new line in T01 and in T07 and note its Element ID
 (our IDs are 96–111). This decides H-H02.
@@ -88,6 +88,19 @@ Still to do: place one new line in T01 and in T07 and note its Element ID
     elements carried `0x0200`). T07 also carries our value in the `Dgn~H`
     counter and opens normally.
 
+11. **Line style and weight (T08).** Line at y=0: Colour 1, Line Style 0,
+    Weight 5 (drawn thick). Line at y=3: Colour 2, Line Style 2, Weight 0
+    (drawn dashed). Line at y=6: Colour 3, Line Style 0, Weight 0. All as
+    written (FN-E11). The J7 text, written with weight 0, shows Weight 0;
+    the "Weight 5 text" has not been checked yet.
+12. **Justification (T08).** Each J text shows a different justification.
+    J7 (code 7) shows **Center Center**, with "User Origin 30.7062,15.5000"
+    for a stored origin of (30, 15) and height 1: MicroStation adds half the
+    height (0.5) and half its own text width (0.7062, from Arial metrics).
+    All five texts are drawn starting at their stored origins (x = 20, 25,
+    30, 35, 40, same baseline), so justification does not move a text; it
+    only sets the handle MicroStation computes (FN-T03, H-T05).
+
 ## Conclusions so far
 
 - MicroStation V8i SS5 accepts seed + append output: recompressed pages,
@@ -95,5 +108,11 @@ Still to do: place one new line in T01 and in T07 and note its Element ID
 - Latvian text must be written as UTF-16 (FN-T05), now the default.
 - Cell origin, cell name and the New bit are settled; the writer changed
   accordingly after this round.
-- Open: text weight (T08), justification codes other than 0 (T08), and the
-  ID counter (new-element check).
+- Line style (0x2c) and weight (0x30) are right for lines (T08). For text
+  the question is still open: T02's text written with weight 1 shows 0.
+- Justification codes follow the V7 table as far as checked (0 Left Top,
+  7 Center Center). A writer that must place a centred or right-justified
+  text at a given point needs the text width as MicroStation computes it
+  from the font; left-justified placement needs only the height.
+- Open: weight of the "Weight 5 text" (T08), names of J1, J2, J12, J14, and
+  the ID counter (new-element check in T01/T07).

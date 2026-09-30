@@ -32,8 +32,9 @@ Elements refer to them by number.
 | Complex shape | 14 | FN-X01, golden 82 | Recognised with components (T01, T07) |
 | Text, ASCII | 17 | FN-T01–T04, golden 40, 43 | Correct; font, size, angle shown (T02) |
 | Text with Latvian letters | 17 | FN-T05 (UTF-16) | Correct (T04) |
-| Text justification other than Left Top | 17 | H-T05 | Pending (T08) |
-| Text weight | 17 | FN-E11 | Written weight not shown (T02); pending T08 |
+| Text justification | 17 | FN-T03, H-T05 | Codes 0 and 7 confirmed; 1, 2, 12, 14 distinct (T08). Text drawn at stored lower-left origin |
+| Line style and weight | all | FN-E11 | Confirmed on lines (T08) |
+| Text weight | 17 | FN-E11 | Written weight 1 shows 0 (T02); weight-5 text pending |
 | Text node | 7 | FN-N01; style block unknown (H-N01) | Both lines display (T02) |
 | Cell, unnamed | 2 | FN-C01 | Origin, scale, angle, element count correct (T05) |
 | Cell, named | 2 | FN-C02 | Name shown (T06) |
@@ -50,7 +51,7 @@ reading (use ezdgn).
 
 ## Open questions, in order
 
-1. Text weight and justification codes (T08).
+1. Text weight (T08 "Weight 5 text") and names of justification codes 1, 2, 12, 14.
 2. Whether an ID counter must be raised (new-element check in T01/T07, E2).
 3. The 2D ADTI seed: 2D model flag, global origin, units (EXP-0003 E1).
 4. The text node style block (E4).

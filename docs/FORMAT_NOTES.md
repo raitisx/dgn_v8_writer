@@ -114,13 +114,14 @@ written (T01).
 Evidence: EXP-0001; EXP-0002.
 
 ### FN-E11 Line style and weight
-Status: Provisional. 0x2c u32 line style, 0x30 u32 line weight. Object 36
-stores 4 and 5; GDAL's CSV reports Style 4, Weight 5.
-MicroStation: lines, arcs, ellipses and shapes written with style 0,
-weight 1 show Line Style 0, Weight 1 (T07). A text written with weight 1
-shows Weight 0 (T02), so text weight lives elsewhere or is overridden;
-test file T08 checks this.
-Evidence: EXP-0001; EXP-0002 T02, T07.
+Status: Confirmed for non-text elements. 0x2c u32 line style, 0x30 u32 line
+weight. Object 36 stores 4 and 5; GDAL's CSV reports Style 4, Weight 5.
+MicroStation: lines written with (style, weight) = (0, 5), (2, 0), (0, 0)
+show exactly those values and draw thick, dashed and thin (T08); a mixed
+selection written with (0, 1) shows Line Style 0, Weight 1 (T07). A text
+written with weight 1 shows Weight 0 (T02), so text weight is stored or
+overridden elsewhere; the T08 "Weight 5 text" still has to be checked.
+Evidence: EXP-0001; EXP-0002 T02, T07, T08.
 
 ### FN-E05 Properties word
 Status: Provisional. 0x24 u32 is `0x80000000` on every graphical object.
@@ -198,24 +199,28 @@ Evidence: ezdgn @e7d72db; golden tests 40, 43; unit test `text::tests`;
 EXP-0002 T00, T02.
 
 ### FN-T03 Font, justification, rotation, origin
-Status: Confirmed for font 1024 and justification 0. 0x68 u32 font number;
-0x6c u16 justification; 0x80–0x8f zero; 0x90 rotation (rad); 0x98 origin.
+Status: Confirmed for font 1024 and justification codes 0 and 7. 0x68 u32
+font number; 0x6c u16 justification; 0x80–0x8f zero; 0x90 rotation (rad);
+0x98 origin.
 MicroStation: font 1024 shows as "Arial" in the GDAL sample's font table.
-Code 0 shows as "Left Top". The stored origin is the lower-left of the text:
-for origin (20, 50) and height 1, MicroStation reports "User Origin
-20, 51", the justification point, which it derives itself (T02). Rotation
-30° displays as written. Font 127 draws lowercase as capitals in this
-MicroStation setup.
-Evidence: golden tests 40, 43; EXP-0002 T02.
+The stored origin is the lower-left of the text, and MicroStation draws the
+text there whatever the justification (T08: J1–J14 all start at their
+stored origins on one baseline). The justification only sets the handle
+("User Origin") that MicroStation computes itself: code 0 "Left Top" gives
+origin + (0, height) (T02: 20,50 → 20,51); code 7 "Center Center" gives
+origin + (width/2, height/2) with MicroStation's own width from the font
+(T08: "J7" at 30,15 → 30.7062,15.5). Rotation 30° displays as written.
+Font 127 draws lowercase as capitals in this MicroStation setup.
+Evidence: golden tests 40, 43; EXP-0002 T02, T08.
 
 ### H-T05 Justification codes
-Status: Hypothesis. Codes follow the public V7 table: 0 left top, 1 left
-centre, 2 left bottom, 3–5 left margin, 6 centre top, 7 centre centre,
-8 centre bottom, 9–11 right margin, 12 right top, 13 right centre, 14 right
-bottom. Code 0 is confirmed (FN-T03). Test file T08 has codes 1, 2, 7, 12,
-14.
-Evidence: EXP-0002 T02 (code 0 only); V7 table per GDAL's MIT-licensed V7
-`dgnlib`.
+Status: Hypothesis, partly confirmed. Codes follow the public V7 table:
+0 left top, 1 left centre, 2 left bottom, 3–5 left margin, 6 centre top,
+7 centre centre, 8 centre bottom, 9–11 right margin, 12 right top,
+13 right centre, 14 right bottom. Codes 0 and 7 match in MicroStation
+(FN-T03); codes 1, 2, 12 and 14 show as four further, different
+justifications (T08; names not yet recorded).
+Evidence: EXP-0002 T02, T08; V7 table per GDAL's MIT-licensed V7 `dgnlib`.
 
 ### FN-T04 Text range depends on font metrics
 Status: Confirmed. Text 43 (`z`, 10000 UOR) stores a 6693 × 9922 range, a
