@@ -6,7 +6,7 @@
 | Performed by | raitisx (licensed seat); screenshots shared in the Claude session |
 | Product | Bentley Descartes StandAlone V8i (SELECTseries 5), MicroStation V8i SS5 platform, with an ADTI workspace |
 | Files tested | Commit `d0923e0` (hashes below), plus T08 from commit `d7de36c` |
-| Status | T00–T08 and the new-element ID check done; text weight pending |
+| Status | Done (T00–T08 and the new-element ID check) |
 | Decides | FN-C01, FN-C02, FN-T05, H-T03, H-T05, H-H02, FN-E11; confirms FN-E*, FN-T*, FN-N01 in MicroStation |
 
 Test files and instructions: [`testfiles/README.md`](../testfiles/README.md).
@@ -91,15 +91,19 @@ Element ID **114**, above our 96–111 (obs. 13).
 11. **Line style and weight (T08).** Line at y=0: Colour 1, Line Style 0,
     Weight 5 (drawn thick). Line at y=3: Colour 2, Line Style 2, Weight 0
     (drawn dashed). Line at y=6: Colour 3, Line Style 0, Weight 0. All as
-    written (FN-E11). The J7 text, written with weight 0, shows Weight 0;
-    the "Weight 5 text" has not been checked yet.
+    written (FN-E11). The "Weight 5 text" shows **Weight 5** (reported
+    2026-10-13). Its bytes differ from T02's "ADTI text 1" (weight 1, shown
+    as 0 in obs. 7) only in weight, colour, ID, length and range, so the T02
+    reading is unexplained; one re-check of T02 would settle it.
 12. **Justification (T08).** Each J text shows a different justification.
     J7 (code 7) shows **Center Center**, with "User Origin 30.7062,15.5000"
     for a stored origin of (30, 15) and height 1: MicroStation adds half the
     height (0.5) and half its own text width (0.7062, from Arial metrics).
     All five texts are drawn starting at their stored origins (x = 20, 25,
     30, 35, 40, same baseline), so justification does not move a text; it
-    only sets the handle MicroStation computes (FN-T03, H-T05).
+    only sets the handle MicroStation computes (FN-T03). Names reported
+    2026-10-13: J1 Left Center, J2 Left Bottom, J12 Right Top, J14 Right
+    Bottom, exactly the V7 table (FN-T06).
 
 13. **New element in T01.** MicroStation placed a line with Element ID 114.
     The file's `Dgn~H` counter was 93 and our highest ID 111, so MicroStation
@@ -115,12 +119,12 @@ Element ID **114**, above our 96–111 (obs. 13).
 - Latvian text must be written as UTF-16 (FN-T05), now the default.
 - Cell origin, cell name and the New bit are settled; the writer changed
   accordingly after this round.
-- Line style (0x2c) and weight (0x30) are right for lines (T08). For text
-  the question is still open: T02's text written with weight 1 shows 0.
-- Justification codes follow the V7 table as far as checked (0 Left Top,
-  7 Center Center). A writer that must place a centred or right-justified
+- Line style (0x2c) and weight (0x30) are right for lines and text (T08);
+  only T02's weight-1 text reading of 0 is unexplained.
+- Justification codes follow the V7 table for all six codes checked (0, 1,
+  2, 7, 12, 14). A writer that must place a centred or right-justified
   text at a given point needs the text width as MicroStation computes it
   from the font; left-justified placement needs only the height.
 - The `Dgn~H` counter does not need updating: MicroStation numbers new
   elements above the highest ID in the file (obs. 13).
-- Open: weight of the "Weight 5 text" (T08) and names of J1, J2, J12, J14.
+- Next: the real ADTI LKS-2020 2D seed (EXP-0003).

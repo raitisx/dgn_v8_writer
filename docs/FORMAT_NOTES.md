@@ -115,13 +115,14 @@ written (T01).
 Evidence: EXP-0001; EXP-0002.
 
 ### FN-E11 Line style and weight
-Status: Confirmed for non-text elements. 0x2c u32 line style, 0x30 u32 line
-weight. Object 36 stores 4 and 5; GDAL's CSV reports Style 4, Weight 5.
+Status: Confirmed. 0x2c u32 line style, 0x30 u32 line weight, for lines and
+text alike. Object 36 stores 4 and 5; GDAL's CSV reports Style 4, Weight 5.
 MicroStation: lines written with (style, weight) = (0, 5), (2, 0), (0, 0)
 show exactly those values and draw thick, dashed and thin (T08); a mixed
-selection written with (0, 1) shows Line Style 0, Weight 1 (T07). A text
-written with weight 1 shows Weight 0 (T02), so text weight is stored or
-overridden elsewhere; the T08 "Weight 5 text" still has to be checked.
+selection written with (0, 1) shows Line Style 0, Weight 1 (T07); a text
+written with weight 5 shows Weight 5 (T08). One reading is unexplained: a
+text in T02 written with weight 1 showed Weight 0, although its bytes are
+laid out like the weight-5 text.
 Evidence: EXP-0001; EXP-0002 T02, T07, T08.
 
 ### FN-E05 Properties word
@@ -200,7 +201,7 @@ Evidence: ezdgn @e7d72db; golden tests 40, 43; unit test `text::tests`;
 EXP-0002 T00, T02.
 
 ### FN-T03 Font, justification, rotation, origin
-Status: Confirmed for font 1024 and justification codes 0 and 7. 0x68 u32
+Status: Confirmed for font 1024 and the justification codes in FN-T06. 0x68 u32
 font number; 0x6c u16 justification; 0x80–0x8f zero; 0x90 rotation (rad);
 0x98 origin.
 MicroStation: font 1024 shows as "Arial" in the GDAL sample's font table.
@@ -214,14 +215,19 @@ origin + (width/2, height/2) with MicroStation's own width from the font
 Font 127 draws lowercase as capitals in this MicroStation setup.
 Evidence: golden tests 40, 43; EXP-0002 T02, T08.
 
-### H-T05 Justification codes
-Status: Hypothesis, partly confirmed. Codes follow the public V7 table:
-0 left top, 1 left centre, 2 left bottom, 3–5 left margin, 6 centre top,
-7 centre centre, 8 centre bottom, 9–11 right margin, 12 right top,
-13 right centre, 14 right bottom. Codes 0 and 7 match in MicroStation
-(FN-T03); codes 1, 2, 12 and 14 show as four further, different
-justifications (T08; names not yet recorded).
+### FN-T06 Justification codes
+Status: Confirmed for codes 0, 1, 2, 7, 12 and 14; the other codes are
+assumed from the same table. The u16 at 0x6c follows the public V7 table:
+0 left top, 1 left centre, 2 left bottom, 3–5 left margin top/centre/
+bottom, 6 centre top, 7 centre centre, 8 centre bottom, 9–11 right margin
+top/centre/bottom, 12 right top, 13 right centre, 14 right bottom.
+MicroStation: 0 "Left Top" (T02); 1 "Left Center", 2 "Left Bottom",
+7 "Center Center", 12 "Right Top", 14 "Right Bottom" (T08).
 Evidence: EXP-0002 T02, T08; V7 table per GDAL's MIT-licensed V7 `dgnlib`.
+
+### H-T05 Justification codes
+Status: Promoted to FN-T06.
+Evidence: EXP-0002 T08.
 
 ### FN-T04 Text range depends on font metrics
 Status: Confirmed. Text 43 (`z`, 10000 UOR) stores a 6693 × 9922 range, a

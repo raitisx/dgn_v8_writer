@@ -33,9 +33,8 @@ Elements refer to them by number.
 | Complex shape | 14 | FN-X01, golden 82 | Recognised with components (T01, T07) |
 | Text, ASCII | 17 | FN-T01–T04, golden 40, 43 | Correct; font, size, angle shown (T02) |
 | Text with Latvian letters | 17 | FN-T05 (UTF-16) | Correct (T04) |
-| Text justification | 17 | FN-T03, H-T05 | Codes 0 and 7 confirmed; 1, 2, 12, 14 distinct (T08). Text drawn at stored lower-left origin |
-| Line style and weight | all | FN-E11 | Confirmed on lines (T08) |
-| Text weight | 17 | FN-E11 | Written weight 1 shows 0 (T02); weight-5 text pending |
+| Text justification | 17 | FN-T03, FN-T06 | Codes 0, 1, 2, 7, 12, 14 confirmed (T02, T08). Text drawn at stored lower-left origin |
+| Line style and weight | all | FN-E11 | Confirmed on lines and text (T07, T08) |
 | Text node | 7 | FN-N01; style block unknown (H-N01) | Both lines display (T02) |
 | Cell, unnamed | 2 | FN-C01 | Origin, scale, angle, element count correct (T05) |
 | Cell, named | 2 | FN-C02 | Name shown (T06) |
@@ -52,9 +51,10 @@ reading (use ezdgn).
 
 ## Open questions, in order
 
-1. Text weight (T08 "Weight 5 text") and names of justification codes 1, 2, 12, 14.
-2. The 2D ADTI seed: 2D model flag, global origin, units (EXP-0003 E1).
-3. The text node style block (E4).
-4. Shared versus normal cells in ADTI practice (E4).
-5. The level table, so ADTI level names can be used instead of IDs (E1).
-6. Page size limits for large drawings (E5).
+1. The 2D ADTI seed: 2D model flag, global origin, units (EXP-0003 E1).
+2. The text node style block (E4).
+3. Shared versus normal cells in ADTI practice (E4).
+4. The level table, so ADTI level names can be used instead of IDs (E1).
+5. Page size limits for large drawings (E5).
+6. Text width as MicroStation computes it, for centred and right-justified
+   placement (E3/E4).

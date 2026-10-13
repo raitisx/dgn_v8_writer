@@ -76,8 +76,8 @@ pub struct TextData {
     pub height: f64,
     pub width: f64,
     pub font: u32,
-    /// Raw justification code. 0 = Left Top (FN-T03); other codes are
-    /// assumed to follow the V7 table (H-T05). `origin` is always the
+    /// Raw justification code, V7 table: 0 Left Top, 1 Left Center, 2 Left
+    /// Bottom, 7 Center Center, 12 Right Top, 14 Right Bottom (FN-T06). `origin` is always the
     /// lower-left of the text, whatever the justification.
     pub justification: u16,
 }
