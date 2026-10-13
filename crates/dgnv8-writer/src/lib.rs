@@ -22,8 +22,8 @@ pub mod spec;
 pub mod text;
 
 pub use document::{Document, SaveReport, WriteOptions};
-pub use element::{Element, Geometry, Symbology, TextData};
+pub use element::{Element, Geometry, Profile, Symbology, TextData, TextNodeStyle};
 pub use error::{Result, WriteError};
 pub use geom::Point2;
-pub use seed::{analyse, Dimension, SeedInfo};
+pub use seed::{analyse, Dimension, LevelEntry, SeedInfo};
 pub use text::TextEncoding;

@@ -4,7 +4,7 @@
 
 use std::f64::consts::FRAC_PI_2;
 
-use dgnv8_writer::element::{Geometry, Symbology, TextData};
+use dgnv8_writer::element::{Geometry, Profile, Symbology, TextData, TextNodeStyle};
 use dgnv8_writer::{Document, Element, Point2, TextEncoding, WriteOptions};
 use ezdgn_core::{read_v8, V8ElementData, V8ScanOptions};
 
@@ -16,6 +16,7 @@ fn options() -> WriteOptions {
         modified_ms: Some(1_790_000_000_000.0),
         update_file_header_counter: false,
         allow_3d_model: true,
+        profile: Profile::Oda,
     }
 }
 
@@ -54,9 +55,9 @@ fn text(value: &str, origin: Point2) -> TextData {
     }
 }
 
-#[test]
-fn appended_elements_read_back_with_ezdgn() {
-    let mut doc = document();
+/// Eight top-level elements: line, line string, shape, ellipse, arc, text,
+/// a two-line text node and a two-line cell (12 objects).
+fn add_sample_elements(doc: &mut Document) {
     let p = |x: f64, y: f64| doc.master_to_uor(x, y);
     let elements = vec![
         element(Geometry::Line {
@@ -94,6 +95,13 @@ fn appended_elements_read_back_with_ezdgn() {
             origin: p(120.0, 90.0),
             rotation: 0.0,
             node_number: 7,
+            style: TextNodeStyle {
+                font: 0,
+                justification: 0,
+                line_spacing: 5000.0,
+                width: 10000.0,
+                height: 10000.0,
+            },
             lines: vec![
                 (sym(64, 3), text("line one", p(120.0, 90.0))),
                 (sym(64, 3), text("line two", p(120.0, 88.5))),
@@ -118,13 +126,23 @@ fn appended_elements_read_back_with_ezdgn() {
     for e in elements {
         doc.add(e);
     }
+}
+
+#[test]
+fn appended_elements_read_back_with_ezdgn() {
+    let mut doc = document();
+    add_sample_elements(&mut doc);
     let (bytes, report) = doc.to_bytes(&options()).unwrap();
     // 8 top-level elements + 2 text-node lines + 2 cell components.
     assert_eq!(report.objects_written, 12);
     assert_eq!(report.first_element_id, 96);
     assert_eq!(report.last_element_id, 107);
 
-    let read = read_v8(&bytes, V8ScanOptions::default()).unwrap();
+    check_sample_read_back(&bytes);
+}
+
+fn check_sample_read_back(bytes: &[u8]) {
+    let read = read_v8(bytes, V8ScanOptions::default()).unwrap();
     let model = &read.models[0];
     assert_eq!(model.elements.len(), SEED_OBJECTS + 12);
     let new: Vec<_> = model.elements[SEED_OBJECTS..].iter().collect();
@@ -173,6 +191,28 @@ fn appended_elements_read_back_with_ezdgn() {
     assert_eq!(new[6].child_indices.len(), 2);
     assert_eq!(new[9].child_indices.len(), 2);
     assert_eq!(new[10].parent_index, Some(SEED_OBJECTS + 9));
+}
+
+#[test]
+fn microstation_profile_reads_back_with_ezdgn() {
+    let mut doc = document();
+    add_sample_elements(&mut doc);
+    let options = WriteOptions {
+        profile: Profile::MicroStation,
+        ..options()
+    };
+    let (bytes, report) = doc.to_bytes(&options).unwrap();
+    assert_eq!(report.objects_written, 12);
+    check_sample_read_back(&bytes);
+    // FN-P05: MicroStation's page header convention.
+    let mut compound = cfb::CompoundFile::open(std::io::Cursor::new(bytes)).unwrap();
+    let mut raw = Vec::new();
+    std::io::Read::read_to_end(&mut compound.open_stream(&report.page).unwrap(), &mut raw).unwrap();
+    let header = dgnv8_writer::page::PageHeader::parse(&raw).unwrap();
+    assert_eq!(
+        (header.record_count, header.page_number, header.population),
+        (SEED_OBJECTS as u32 + 12, 0, 0)
+    );
 }
 
 #[test]

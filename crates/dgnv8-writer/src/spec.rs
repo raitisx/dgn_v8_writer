@@ -2,13 +2,18 @@
 //!
 //! Coordinates are in master units (metres for ADTI), angles in degrees.
 //! The job names a seed file; every element is appended to one of its models.
+//! Levels are given by ID or by name from the seed's level table; colour,
+//! weight and line style by number or as `"by_level"`.
 
 use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
 use crate::document::{Document, WriteOptions};
-use crate::element::{Element, Geometry, Symbology, TextData, FLAG_HOLE};
+use crate::element::{
+    Element, Geometry, Profile, Symbology, TextData, TextNodeStyle, COLOR_BY_LEVEL, FLAG_HOLE,
+    STYLE_BY_LEVEL, WEIGHT_BY_LEVEL,
+};
 use crate::error::{Result, WriteError};
 use crate::geom::Point2;
 use crate::text::TextEncoding;
@@ -31,6 +36,9 @@ pub struct JobSpec {
     /// Test fixtures only: allow 2D elements in a 3D model.
     #[serde(default)]
     pub allow_3d_model: bool,
+    /// `"oda"` (default, round-1 conventions) or `"microstation"`.
+    #[serde(default)]
+    pub profile: Profile,
     #[serde(default)]
     pub defaults: Defaults,
     pub elements: Vec<ElementSpec>,
@@ -39,10 +47,10 @@ pub struct JobSpec {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields, default)]
 pub struct Defaults {
-    pub level: u32,
-    pub color: u32,
-    pub weight: u32,
-    pub style: u32,
+    pub level: LevelSpec,
+    pub color: AttrSpec,
+    pub weight: AttrSpec,
+    pub style: AttrSpec,
     pub font: u32,
     pub text_height: f64,
 }
@@ -50,12 +58,43 @@ pub struct Defaults {
 impl Default for Defaults {
     fn default() -> Self {
         Self {
-            level: 64, // "Default" level ID in the evidence (FN-E04)
-            color: 0,
-            weight: 0,
-            style: 0,
+            level: LevelSpec::Id(64), // "Default" level ID in the evidence (FN-E02)
+            color: AttrSpec::Value(0),
+            weight: AttrSpec::Value(0),
+            style: AttrSpec::Value(0),
             font: 0,
             text_height: 1.0,
+        }
+    }
+}
+
+/// A level by ID, or by exact name from the seed's level table (FN-V01).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(untagged)]
+pub enum LevelSpec {
+    Id(u32),
+    Name(String),
+}
+
+/// A colour, weight or line style: a number or `"by_level"` (FN-E14).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(untagged)]
+pub enum AttrSpec {
+    Value(u32),
+    Keyword(AttrKeyword),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AttrKeyword {
+    ByLevel,
+}
+
+impl AttrSpec {
+    const fn resolve(self, by_level: u32) -> u32 {
+        match self {
+            Self::Value(value) => value,
+            Self::Keyword(AttrKeyword::ByLevel) => by_level,
         }
     }
 }
@@ -65,13 +104,13 @@ pub struct ElementSpec {
     #[serde(flatten)]
     pub geometry: GeometrySpec,
     #[serde(default)]
-    pub level: Option<u32>,
+    pub level: Option<LevelSpec>,
     #[serde(default)]
-    pub color: Option<u32>,
+    pub color: Option<AttrSpec>,
     #[serde(default)]
-    pub weight: Option<u32>,
+    pub weight: Option<AttrSpec>,
     #[serde(default)]
-    pub style: Option<u32>,
+    pub style: Option<AttrSpec>,
     #[serde(default)]
     pub graphic_group: Option<u32>,
 }
@@ -121,10 +160,15 @@ pub enum GeometrySpec {
         #[serde(flatten)]
         style: TextStyleSpec,
     },
+    /// `origin` is the first line's lower-left, as for a text.
     TextNode {
         lines: Vec<String>,
         origin: [f64; 2],
-        /// Distance between baselines; default 1.5 x height.
+        /// Gap between lines (MicroStation's line spacing); default 0.5 x
+        /// height, so baselines are 1.5 x height apart.
+        #[serde(default)]
+        line_spacing: Option<f64>,
+        /// Distance between baselines; alternative to `line_spacing`.
         #[serde(default)]
         line_pitch: Option<f64>,
         #[serde(default)]
@@ -204,36 +248,66 @@ pub fn run_job(job_path: &Path) -> Result<(PathBuf, crate::document::SaveReport)
     let base = job_path.parent().unwrap_or_else(|| Path::new("."));
     let mut document = Document::from_seed_path(base.join(&job.seed), job.model)?;
     for spec in &job.elements {
-        let element = to_element(&document, &job.defaults, spec, Placement::IDENTITY)?;
+        let element = to_element(
+            &document,
+            job.profile,
+            &job.defaults,
+            spec,
+            Placement::IDENTITY,
+        )?;
         document.add(element);
     }
     let options = WriteOptions {
         modified_ms: job.modified_ms,
         update_file_header_counter: job.update_file_header_counter,
         allow_3d_model: job.allow_3d_model,
+        profile: job.profile,
     };
     let output = base.join(&job.output);
     let report = document.save(&output, &options)?;
     Ok((output, report))
 }
 
+/// Level ID for `level`, looking names up in the seed (FN-V01).
+fn resolve_level(document: &Document, level: &LevelSpec) -> Result<u32> {
+    match level {
+        LevelSpec::Id(id) => Ok(*id),
+        LevelSpec::Name(name) => document.info().level_id(name).ok_or_else(|| {
+            let known: Vec<&str> = document
+                .info()
+                .levels
+                .iter()
+                .map(|level| level.name.as_str())
+                .collect();
+            WriteError::InvalidInput(format!(
+                "level {name:?} is not in the seed's level table (it has: {})",
+                known.join(", ")
+            ))
+        }),
+    }
+}
+
 fn to_element(
     document: &Document,
+    profile: Profile,
     defaults: &Defaults,
     spec: &ElementSpec,
     placement: Placement,
 ) -> Result<Element> {
-    // Cell headers default to level 0, as in both sample cells (FN-C01).
+    // Cell headers default to level 0, as in all three sample cells (FN-C01).
     let default_level = if matches!(spec.geometry, GeometrySpec::Cell { .. }) {
-        0
+        LevelSpec::Id(0)
     } else {
-        defaults.level
+        defaults.level.clone()
     };
     let symbology = Symbology {
-        level: spec.level.unwrap_or(default_level),
-        color: spec.color.unwrap_or(defaults.color),
-        weight: spec.weight.unwrap_or(defaults.weight),
-        style: spec.style.unwrap_or(defaults.style),
+        level: resolve_level(document, spec.level.as_ref().unwrap_or(&default_level))?,
+        color: spec.color.unwrap_or(defaults.color).resolve(COLOR_BY_LEVEL),
+        weight: spec
+            .weight
+            .unwrap_or(defaults.weight)
+            .resolve(WEIGHT_BY_LEVEL),
+        style: spec.style.unwrap_or(defaults.style).resolve(STYLE_BY_LEVEL),
         graphic_group: spec.graphic_group.unwrap_or(0),
     };
     let point = |p: [f64; 2]| {
@@ -309,12 +383,23 @@ fn to_element(
         GeometrySpec::TextNode {
             lines,
             origin,
+            line_spacing,
             line_pitch,
             node_number,
             style,
         } => {
             let height = style.height.unwrap_or(defaults.text_height);
-            let pitch = line_pitch.unwrap_or(1.5 * height);
+            let spacing = match (line_spacing, line_pitch) {
+                (Some(_), Some(_)) => {
+                    return Err(WriteError::InvalidInput(
+                        "give line_spacing or line_pitch, not both".into(),
+                    ))
+                }
+                (Some(spacing), None) => *spacing,
+                (None, Some(pitch)) => pitch - height,
+                (None, None) => 0.5 * height,
+            };
+            let pitch = height + spacing;
             let rotation = style.rotation_deg.to_radians();
             let (sin_r, cos_r) = rotation.sin_cos();
             let node_lines = lines
@@ -329,10 +414,37 @@ fn to_element(
                     ))
                 })
                 .collect::<Result<Vec<_>>>()?;
+            let justification = style.justification.unwrap_or(0);
+            let node_origin = match profile {
+                Profile::Oda => *origin, // first line's origin (FN-N01)
+                Profile::MicroStation => {
+                    // Justification point of the node box (FN-N02, H-N03).
+                    let block = lines.len() as f64 * pitch - spacing;
+                    let up = match justification {
+                        0 => height,                      // left top
+                        1 => height - 0.5 * block,        // left centre
+                        2 => height - block,              // left bottom
+                        _ => {
+                            return Err(WriteError::InvalidInput(format!(
+                                "text node justification {justification} is not supported yet; use 0, 1 or 2"
+                            )))
+                        }
+                    };
+                    [origin[0] - up * sin_r, origin[1] + up * cos_r]
+                }
+            };
+            let width = style.width.unwrap_or(height);
             Geometry::TextNode {
-                origin: point(*origin),
+                origin: point(node_origin),
                 rotation: angle(style.rotation_deg),
                 node_number: node_number.unwrap_or(1),
+                style: TextNodeStyle {
+                    font: style.font.unwrap_or(defaults.font),
+                    justification,
+                    line_spacing: distance(spacing),
+                    width: distance(width),
+                    height: distance(height),
+                },
                 lines: node_lines,
             }
         }
@@ -342,7 +454,7 @@ fn to_element(
             let inherited = inherit(defaults, spec);
             let children = parts
                 .iter()
-                .map(|part| to_element(document, &inherited, part, placement))
+                .map(|part| to_element(document, profile, &inherited, part, placement))
                 .collect::<Result<Vec<_>>>()?;
             if matches!(spec.geometry, GeometrySpec::ComplexChain { .. }) {
                 Geometry::ComplexChain(children)
@@ -371,7 +483,7 @@ fn to_element(
             let inherited = inherit(defaults, spec);
             let children = parts
                 .iter()
-                .map(|part| to_element(document, &inherited, part, inner))
+                .map(|part| to_element(document, profile, &inherited, part, inner))
                 .collect::<Result<Vec<_>>>()?;
             let (sin_r, cos_r) = inner.rotation.sin_cos();
             Geometry::Cell {
@@ -394,7 +506,10 @@ fn to_element(
 /// is not passed on.
 fn inherit(defaults: &Defaults, parent: &ElementSpec) -> Defaults {
     Defaults {
-        level: parent.level.unwrap_or(defaults.level),
+        level: parent
+            .level
+            .clone()
+            .unwrap_or_else(|| defaults.level.clone()),
         color: parent.color.unwrap_or(defaults.color),
         weight: parent.weight.unwrap_or(defaults.weight),
         style: parent.style.unwrap_or(defaults.style),
@@ -434,10 +549,17 @@ mod tests {
         let document = Document::from_seed_bytes(SEED.to_vec(), None).unwrap();
         let spec: ElementSpec = serde_json::from_str(json).unwrap();
         let defaults = Defaults {
-            color: 3,
+            color: AttrSpec::Value(3),
             ..Defaults::default()
         };
-        to_element(&document, &defaults, &spec, Placement::IDENTITY).unwrap()
+        to_element(
+            &document,
+            Profile::Oda,
+            &defaults,
+            &spec,
+            Placement::IDENTITY,
+        )
+        .unwrap()
     }
 
     fn part_colors(element: &Element) -> Vec<u32> {
@@ -448,6 +570,79 @@ mod tests {
             } => parts.iter().map(|part| part.symbology.color).collect(),
             other => panic!("unexpected {other:?}"),
         }
+    }
+
+    fn build_with(profile: Profile, json: &str) -> Result<Element> {
+        let document = Document::from_seed_bytes(SEED.to_vec(), None).unwrap();
+        let spec: ElementSpec = serde_json::from_str(json).unwrap();
+        to_element(
+            &document,
+            profile,
+            &Defaults::default(),
+            &spec,
+            Placement::IDENTITY,
+        )
+    }
+
+    #[test]
+    fn level_names_and_by_level_resolve() {
+        let line = build(
+            r#"{ "type": "line", "points": [[0, 0], [1, 0]], "level": "Default",
+                 "color": "by_level", "weight": "by_level", "style": "by_level" }"#,
+        );
+        assert_eq!(
+            line.symbology,
+            Symbology {
+                level: 64,
+                color: COLOR_BY_LEVEL,
+                weight: WEIGHT_BY_LEVEL,
+                style: STYLE_BY_LEVEL,
+                graphic_group: 0,
+            }
+        );
+        let missing = build_with(
+            Profile::Oda,
+            r#"{ "type": "line", "points": [[0, 0], [1, 0]], "level": "NO_SUCH_LEVEL" }"#,
+        );
+        assert!(missing.unwrap_err().to_string().contains("Default"));
+    }
+
+    #[test]
+    fn microstation_text_node_origin_is_its_justification_point() {
+        // E4: a left-top node stores its origin one text height above the
+        // first baseline; lines are height + spacing apart (FN-N02).
+        let json = r#"{ "type": "text_node", "lines": ["a", "b"], "origin": [10, 20],
+                        "height": 0.25, "line_spacing": 0.5, "font": 1025 }"#;
+        let node = build_with(Profile::MicroStation, json).unwrap();
+        let Geometry::TextNode {
+            origin,
+            style,
+            lines,
+            ..
+        } = &node.geometry
+        else {
+            panic!("not a text node");
+        };
+        assert_eq!(*origin, Point2::new(100_000.0, 202_500.0));
+        assert_eq!(lines[1].1.origin, Point2::new(100_000.0, 192_500.0));
+        assert_eq!(
+            (style.font, style.line_spacing, style.height),
+            (1025, 5000.0, 2500.0)
+        );
+        let left_bottom = json.replace("\"font\"", "\"justification\": 2, \"font\"");
+        let node = build_with(Profile::MicroStation, &left_bottom).unwrap();
+        let Geometry::TextNode { origin, .. } = node.geometry else {
+            panic!("not a text node");
+        };
+        assert_eq!(origin, Point2::new(100_000.0, 192_500.0));
+        let centred = json.replace("\"font\"", "\"justification\": 7, \"font\"");
+        assert!(build_with(Profile::MicroStation, &centred).is_err());
+        // The Oda profile keeps the first line's origin (FN-N01).
+        let node = build_with(Profile::Oda, json).unwrap();
+        let Geometry::TextNode { origin, .. } = node.geometry else {
+            panic!("not a text node");
+        };
+        assert_eq!(origin, Point2::new(100_000.0, 200_000.0));
     }
 
     #[test]

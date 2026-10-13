@@ -3,8 +3,11 @@
 A clean-room DGN V8 writer for 2D Latvian ADTI drawings, with a traceable
 record of where every piece of format knowledge comes from.
 
-**Status: first prototype, not for production.** The writer passes its own
-tests. It has not yet been checked in MicroStation.
+**Status: prototype, not for production.** MicroStation V8i opened every
+round-1 test file (built on GDAL's sample) and showed the elements as
+written ([EXP-0002](research/EXP-0002-microstation-acceptance.md)). Files
+on the real ADTI seed are being tested now
+([EXP-0004](research/EXP-0004-adti-seed-acceptance.md)).
 
 ## How it works
 
@@ -44,7 +47,16 @@ target/release/dgnv8w build job.json          # append the job's elements
 ```
 
 A job is a JSON file naming the seed, the output and the elements, in master
-units (metres) and degrees. Examples: [testfiles/jobs/](testfiles/jobs/).
+units (metres) and degrees. Examples: [testfiles/jobs/](testfiles/jobs/)
+(GDAL sample) and [testfiles/adti_jobs/](testfiles/adti_jobs/) (ADTI seed,
+which you supply as `private/adti_seed.dgn`).
+
+- `"profile": "microstation"` writes elements the way MicroStation itself
+  stores them in the ADTI seed; the default `"oda"` keeps the round-1
+  conventions of GDAL's ODA-written sample.
+- `"level"` is a level ID or a level name from the seed's level table
+  (`dgnv8w inspect` lists them).
+- `"color"`, `"weight"` and `"style"` take a number or `"by_level"`.
 
 ## Licence
 

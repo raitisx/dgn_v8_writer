@@ -3,12 +3,13 @@
 //! The seed is copied unchanged except for three things: the model's last
 //! graphic page receives the new objects, the model header extents grow to
 //! cover them, and (only on request) the `Dgn~H` ID counter is raised.
+//! [`Profile`] selects ODA or MicroStation conventions where they differ.
 
 use std::io::Write;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::element::{Element, EncodeContext, IdAllocator};
+use crate::element::{Element, EncodeContext, IdAllocator, Profile};
 use crate::error::{Result, WriteError};
 use crate::geom::{Point2, RangeI64};
 use crate::page::{deflate, inflate, Page, PageHeader, PageObject};
@@ -26,6 +27,8 @@ pub struct WriteOptions {
     pub update_file_header_counter: bool,
     /// Allow writing 2D elements into a 3D model (test fixtures only).
     pub allow_3d_model: bool,
+    /// Byte conventions to follow where ODA and MicroStation differ.
+    pub profile: Profile,
 }
 
 /// A seed plus the elements to append to one of its models.
@@ -102,6 +105,7 @@ impl Document {
         }
         let context = EncodeContext {
             modified_ms: options.modified_ms.unwrap_or_else(now_ms),
+            profile: options.profile,
         };
         let mut ids = IdAllocator::starting_at(self.info.max_element_id + 1);
         let first_element_id = self.info.max_element_id + 1;
@@ -114,7 +118,7 @@ impl Document {
         }
 
         let mut compound = open_compound(self.seed.clone())?;
-        let page_path = self.append_objects(&mut compound, &new_objects)?;
+        let page_path = self.append_objects(&mut compound, &new_objects, options.profile)?;
 
         // Grow the model extents (FN-M05).
         let seed_range = RangeI64 {
@@ -159,7 +163,12 @@ impl Document {
 
     /// Append to the last graphic page, or create page `$1` when the model
     /// has none (FN-P01).
-    fn append_objects(&self, compound: &mut Compound, objects: &[Vec<u8>]) -> Result<String> {
+    fn append_objects(
+        &self,
+        compound: &mut Compound,
+        objects: &[Vec<u8>],
+        profile: Profile,
+    ) -> Result<String> {
         let (path, mut page) = match self.info.graphic_pages.last() {
             Some(path) => (path.clone(), Page::parse(&read_stream(compound, path)?)?),
             None => {
@@ -184,7 +193,15 @@ impl Document {
         };
         let added = objects.len() as u32;
         page.header.record_count += added;
-        page.header.population += added;
+        match profile {
+            // ODA keeps population equal to the record count (FN-P01).
+            Profile::Oda => page.header.population += added,
+            // MicroStation stores page number 0 and population 0 (FN-P05).
+            Profile::MicroStation => {
+                page.header.page_number = 0;
+                page.header.population = 0;
+            }
+        }
         page.objects.extend(objects.iter().map(|bytes| PageObject {
             prefix: 0, // FN-P02: always zero in the evidence
             bytes: bytes.clone(),

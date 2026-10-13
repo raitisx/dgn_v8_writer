@@ -10,8 +10,8 @@ use std::f64::consts::{FRAC_PI_4, PI};
 use std::io::{Cursor, Read};
 
 use dgnv8_writer::element::{
-    Element, EncodeContext, Geometry, IdAllocator, Symbology, TextData, FLAG_3D, FLAG_HOLE,
-    FLAG_NEW,
+    Element, EncodeContext, Geometry, IdAllocator, Profile, Symbology, TextData, TextNodeStyle,
+    FLAG_3D, FLAG_HOLE, FLAG_NEW,
 };
 use dgnv8_writer::page::Page;
 use dgnv8_writer::{Point2, TextEncoding};
@@ -69,6 +69,7 @@ fn encode(element: &Element, first_id: u64) -> Vec<Vec<u8>> {
     let mut ids = IdAllocator::starting_at(first_id);
     let context = EncodeContext {
         modified_ms: FIXTURE_TIME_MS,
+        profile: Profile::Oda,
     };
     element.encode(&mut ids, &context).unwrap().objects
 }
@@ -218,6 +219,14 @@ fn text_node_42_with_text_43() {
         origin: p(0.0, 0.0),
         rotation: 0.0,
         node_number: 1,
+        // Ignored by the Oda profile, which writes zeros like the sample.
+        style: TextNodeStyle {
+            font: 127,
+            justification: 0,
+            line_spacing: 5000.0,
+            width: 10000.0,
+            height: 10000.0,
+        },
         lines: vec![(
             default_symbology(),
             TextData {
@@ -232,7 +241,7 @@ fn text_node_42_with_text_43() {
             },
         )],
     });
-    // The fixture node header is 0x70..0x8f zero-filled, like ours (H-N01).
+    // The fixture node header is 0x70..0x8f zero-filled, like the Oda profile (FN-N01).
     assert_same(&[42, 43], &encode(&node, 42), &[true, true]);
 }
 

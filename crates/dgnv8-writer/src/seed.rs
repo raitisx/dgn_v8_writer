@@ -1,19 +1,27 @@
 //! Read-only analysis of a seed file: which model to write into, its units,
-//! its extents, and the highest element ID already in use.
+//! its extents, its levels, and the highest element ID already in use.
 
 use std::io::{Cursor, Read};
 
 use serde::Serialize;
 
 use crate::error::{Result, WriteError};
-use crate::page::{inflate, le_f64, le_i64, le_u32, le_u64, Page};
+use crate::page::{inflate, le_f64, le_i64, le_u32, le_u64, Page, PageObject};
+use crate::text::decode_payload;
 
 /// Streams whose presence identifies a DGN V8 container (FN-S01).
 pub const REQUIRED_ROOT_ENTRIES: [&str; 3] = ["/Dgn~H", "/Dgn~S", "/Dgn-Md"];
 /// Element type of the model header object in `Dgn~Mh` (FN-M01).
 pub const MODEL_HEADER_TYPE: u8 = 66;
-/// Model-header type-word bit meaning "2D model" (FN-M02).
-pub const MODEL_2D_FLAG: u32 = 0x0080_0000;
+/// Model-header type-word bits meaning "2D model" (FN-M02): `0x00400000`
+/// in MicroStation's ADTI seed, `0x00800000` according to ezdgn.
+pub const MODEL_2D_FLAGS: u32 = 0x0040_0000 | 0x0080_0000;
+/// Table entry and table header element types (FN-V01).
+pub const TABLE_ENTRY_TYPE: u8 = 95;
+/// Table kind, stored where graphic elements keep their level (FN-V01).
+pub const TABLE_KIND_LEVELS: u32 = 1;
+/// Type-word bit of table entries that are not the file's own (FN-V01).
+pub const TABLE_ENTRY_LIBRARY_BIT: u32 = 0x0080_0000;
 /// Size of the uncompressed prefix of `Dgn~H` before its zlib data (FN-H01).
 pub const FILE_HEADER_PREFIX_BYTES: usize = 0x14;
 /// Offset in inflated `Dgn~H` of a u64 that looks like an element-ID counter
@@ -43,6 +51,26 @@ pub struct SeedInfo {
     pub graphic_pages: Vec<String>,
     pub page_format_versions: Vec<u32>,
     pub graphic_object_count: usize,
+    /// The file's own levels, in table order (FN-V01).
+    pub levels: Vec<LevelEntry>,
+}
+
+/// One level of the seed's level table (FN-V01).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct LevelEntry {
+    pub id: u32,
+    pub name: String,
+}
+
+impl SeedInfo {
+    /// Level ID for an exact level name.
+    #[must_use]
+    pub fn level_id(&self, name: &str) -> Option<u32> {
+        self.levels
+            .iter()
+            .find(|level| level.name == name)
+            .map(|level| level.id)
+    }
 }
 
 /// Location of the model header object inside inflated `Dgn~Mh`.
@@ -101,7 +129,7 @@ pub(crate) fn analyse_compound(compound: &mut Compound, model: Option<usize>) ->
     let header_bytes = inflate(&read_stream(compound, &format!("{model_storage}/Dgn~Mh"))?)?;
     let location = find_model_header(&header_bytes)?;
     let object = &header_bytes[location.offset..];
-    let dimension = if le_u32(object, 0) & MODEL_2D_FLAG != 0 {
+    let dimension = if le_u32(object, 0) & MODEL_2D_FLAGS != 0 {
         Dimension::Two
     } else {
         Dimension::Three
@@ -121,8 +149,10 @@ pub(crate) fn analyse_compound(compound: &mut Compound, model: Option<usize>) ->
     }
     let mut max_element_id = le_u64(object, 0x10);
 
-    // Highest element ID across every object page of every storage (FN-S02).
+    // Highest element ID across every object page of every storage (FN-S02),
+    // and the level table in the root `Dgn^Nm` pages (FN-V01).
     let mut page_format_versions = Vec::new();
+    let mut levels = Vec::new();
     for (path, is_stream) in &entries {
         if !is_stream || page_number(path).is_none() || is_auxiliary_page(path) {
             continue;
@@ -136,6 +166,9 @@ pub(crate) fn analyse_compound(compound: &mut Compound, model: Option<usize>) ->
             if let Some(id) = object.element_id() {
                 max_element_id = max_element_id.max(id);
             }
+        }
+        if path.starts_with("/Dgn^Nm/") {
+            levels.extend(page.objects.iter().filter_map(level_entry));
         }
     }
 
@@ -158,7 +191,46 @@ pub(crate) fn analyse_compound(compound: &mut Compound, model: Option<usize>) ->
         graphic_pages,
         page_format_versions,
         graphic_object_count,
+        levels,
     })
+}
+
+/// A file level: type-95 entry of table kind 1 without the library bit;
+/// level ID at 0x20, name in string linkage property 1 (FN-V01).
+fn level_entry(object: &PageObject) -> Option<LevelEntry> {
+    let bytes = &object.bytes;
+    if object.element_type() != TABLE_ENTRY_TYPE
+        || bytes.len() < 0x24
+        || le_u32(bytes, 0x0c) != TABLE_KIND_LEVELS
+        || le_u32(bytes, 0) & TABLE_ENTRY_LIBRARY_BIT != 0
+    {
+        return None;
+    }
+    let name = string_property(bytes, 1)?;
+    Some(LevelEntry {
+        id: le_u32(bytes, 0x20),
+        name,
+    })
+}
+
+/// Payload of the first string linkage (FN-L02) with `property_id`.
+pub(crate) fn string_property(object: &[u8], property_id: u32) -> Option<String> {
+    let mut at = 2 * le_u32(object, 8) as usize; // FN-P03: attribute offset
+    while at + 12 <= object.len() {
+        let length = 2 * (usize::from(object[at]) + 1); // FN-L01
+        if object[at + 1] & 0x10 == 0 || at + length > object.len() {
+            return None;
+        }
+        let linkage_id = u16::from_le_bytes([object[at + 2], object[at + 3]]);
+        if linkage_id == crate::element::STRING_LINKAGE_ID && le_u32(object, at + 4) == property_id
+        {
+            let payload_length = le_u32(object, at + 8) as usize;
+            let payload = object.get(at + 12..at + 12 + payload_length)?;
+            return Some(decode_payload(payload));
+        }
+        at += length;
+    }
+    None
 }
 
 /// Graphic pages `<model>/Dgn^G/$N`, ordered by page number.
@@ -248,5 +320,27 @@ fn path_string(path: &std::path::Path) -> String {
         text
     } else {
         format!("/{text}")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const FIXTURE: &[u8] = include_bytes!("../tests/data/gdal_test_dgnv8.dgn");
+
+    #[test]
+    fn reads_the_level_table_of_the_sample() {
+        let info = analyse(FIXTURE, None).unwrap();
+        assert_eq!(
+            info.levels,
+            [LevelEntry {
+                id: 64,
+                name: "Default".into()
+            }]
+        );
+        assert_eq!(info.level_id("Default"), Some(64));
+        assert_eq!(info.level_id("default"), None);
+        assert_eq!(info.dimension, Dimension::Three);
     }
 }

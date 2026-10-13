@@ -24,6 +24,12 @@ pub const TYPE_TEXT: u8 = 17;
 pub const COMMON_HEADER_BYTES: usize = 0x68;
 /// Properties word seen on every graphical object of the fixture (FN-E05).
 pub const DEFAULT_PROPERTIES: u32 = 0x8000_0000;
+/// Type-word bit on every object MicroStation itself writes (FN-E13).
+pub const TYPE_WORD_MICROSTATION_BIT: u32 = 0x0080_0000;
+/// Line style, weight and colour values that mean "ByLevel" (FN-E14).
+pub const STYLE_BY_LEVEL: u32 = 0x7fff_ffff;
+pub const WEIGHT_BY_LEVEL: u32 = 0xffff_ffff;
+pub const COLOR_BY_LEVEL: u32 = 0xffff_ffff;
 /// "New" property: MicroStation shows New when set (FN-E06). The GDAL
 /// sample has it on some objects; this writer never sets it by default.
 pub const FLAG_NEW: u32 = 0x0000_0200;
@@ -82,6 +88,19 @@ pub struct TextData {
     pub justification: u16,
 }
 
+/// Node-wide text settings that MicroStation stores in the text node header
+/// (FN-N02). Sizes and spacing in UOR.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct TextNodeStyle {
+    pub font: u32,
+    pub justification: u16,
+    /// Gap between one line's box and the next; baseline pitch is
+    /// `height + line_spacing`.
+    pub line_spacing: f64,
+    pub width: f64,
+    pub height: f64,
+}
+
 /// A 2D element in UOR with its symbology.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Element {
@@ -116,9 +135,14 @@ pub enum Geometry {
     },
     Text(TextData),
     TextNode {
+        /// Node origin as stored: the first line's origin for the `Oda`
+        /// profile (FN-N01), the node's justification point for
+        /// `MicroStation` (FN-N02).
         origin: Point2,
         rotation: f64,
         node_number: u32,
+        /// Written only by the `MicroStation` profile; `Oda` writes zeros.
+        style: TextNodeStyle,
         lines: Vec<(Symbology, TextData)>,
     },
     ComplexChain(Vec<Element>),
@@ -134,11 +158,36 @@ pub enum Geometry {
     },
 }
 
+/// Whose byte conventions to follow where writers differ.
+///
+/// `Oda` reproduces the GDAL sample (written by the ODA library) and the
+/// round-1 test files. `MicroStation` follows what MicroStation itself writes
+/// in the ADTI seed (EXP-0003): FN-E13, FN-P05, FN-T04, FN-N02, FN-C03.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Profile {
+    #[default]
+    Oda,
+    #[serde(rename = "microstation")]
+    MicroStation,
+}
+
 /// Settings shared by every object written in one save.
 #[derive(Debug, Clone, Copy)]
 pub struct EncodeContext {
     /// Last-modified time, milliseconds since 1970-01-01 UTC (FN-E03a).
     pub modified_ms: f64,
+    pub profile: Profile,
+}
+
+impl EncodeContext {
+    /// Type-word bits and properties word for this profile (FN-E05, FN-E13).
+    const fn header_style(&self) -> (u32, u32) {
+        match self.profile {
+            Profile::Oda => (0, DEFAULT_PROPERTIES),
+            Profile::MicroStation => (TYPE_WORD_MICROSTATION_BIT, 0),
+        }
+    }
 }
 
 /// Hands out element IDs above everything already in the seed (FN-S02).
@@ -184,20 +233,23 @@ impl Element {
         ids: &mut IdAllocator,
         context: &EncodeContext,
     ) -> Result<Encoded> {
+        let (type_bits, properties) = context.header_style();
         let simple = |element_type: u8, flags: u32, primary: Vec<u8>, bounds: Bounds| {
             let range = RangeI64::from_bounds(bounds);
             let header = HeaderFields {
                 element_type,
                 role,
+                type_bits,
                 symbology: self.symbology,
                 element_id: 0,
                 modified_ms: context.modified_ms,
-                properties: DEFAULT_PROPERTIES,
+                properties,
                 flags: flags | self.extra_flags,
                 range,
             };
             (header, primary, range)
         };
+        let profile = context.profile;
         let (header, primary, range, linkages, components) = match &self.geometry {
             Geometry::Line { start, end } => {
                 // FN-E09: start and end point.
@@ -285,7 +337,7 @@ impl Element {
                 (h, p, r, Vec::new(), Vec::new())
             }
             Geometry::Text(text) => {
-                let (data, bounds) = text_primary(text)?;
+                let (data, bounds) = text_primary(text, profile)?;
                 let (h, p, r) = simple(TYPE_TEXT, 0, data, bounds);
                 (h, p, r, Vec::new(), Vec::new())
             }
@@ -293,6 +345,7 @@ impl Element {
                 origin,
                 rotation,
                 node_number,
+                style,
                 lines,
             } => {
                 if lines.is_empty() {
@@ -310,13 +363,24 @@ impl Element {
                     .collect();
                 let mut bounds = Bounds::of_point(*origin);
                 for child in &children {
-                    bounds = bounds.union(child.bounds()?);
+                    bounds = bounds.union(child.bounds_for(profile)?);
                 }
                 // FN-N01: line count, node number, rotation, origin.
                 let mut data = Vec::with_capacity(0x40);
                 push_u32(&mut data, lines.len() as u32);
                 push_u32(&mut data, *node_number);
-                data.extend_from_slice(&[0u8; 0x20]); // 0x70..0x8f: unresolved (H-N01)
+                match profile {
+                    Profile::Oda => data.extend_from_slice(&[0u8; 0x20]), // as the sample (FN-N01)
+                    Profile::MicroStation => {
+                        // FN-N02: font, 255, justification, spacing, size.
+                        push_u32(&mut data, style.font);
+                        data.extend_from_slice(&255u16.to_le_bytes());
+                        data.extend_from_slice(&style.justification.to_le_bytes());
+                        push_f64(&mut data, style.line_spacing);
+                        push_f64(&mut data, style.width * UOR_TO_TEXT_MULTIPLIER);
+                        push_f64(&mut data, style.height * UOR_TO_TEXT_MULTIPLIER);
+                    }
+                }
                 push_f64(&mut data, *rotation);
                 push_point(&mut data, *origin);
                 let (h, p, r) = simple(TYPE_TEXT_NODE, 0, data, bounds);
@@ -335,7 +399,7 @@ impl Element {
                 check_components(what, children, false)?;
                 let mut bounds: Option<Bounds> = None;
                 for child in children {
-                    let child_bounds = child.bounds()?;
+                    let child_bounds = child.bounds_for(profile)?;
                     bounds = Some(bounds.map_or(child_bounds, |b| b.union(child_bounds)));
                 }
                 // FN-X01: component count and a zero word.
@@ -358,22 +422,36 @@ impl Element {
                 check_components("cell", children, true)?;
                 let mut bounds: Option<Bounds> = None;
                 for child in children {
-                    let child_bounds = child.bounds()?;
+                    let child_bounds = child.bounds_for(profile)?;
                     bounds = Some(bounds.map_or(child_bounds, |b| b.union(child_bounds)));
                 }
                 let bounds = bounds.unwrap();
                 let mut data = Vec::with_capacity(0x58);
+                // Components cannot nest yet, so this equals the number of
+                // descendants that MicroStation stores (FN-C03).
                 push_u32(&mut data, children.len() as u32);
-                push_u32(&mut data, 1); // 0x6c: value 1 observed (FN-C01)
-                push_point(&mut data, bounds.min); // range low (FN-C01, V7 analogue)
-                push_point(&mut data, bounds.max); // range high
+                let local = match profile {
+                    Profile::Oda => {
+                        push_u32(&mut data, 1); // 0x6c: value 1 observed (FN-C01)
+                        bounds // model coordinates, as in round 1 (FN-C01)
+                    }
+                    Profile::MicroStation => {
+                        data.extend_from_slice(&[1, 0, 1, 0]); // 0x6c (FN-C03)
+                        cell_local_bounds(bounds, *origin, transform)? // FN-C03
+                    }
+                };
+                push_point(&mut data, local.min); // range low (FN-C01)
+                push_point(&mut data, local.max); // range high
                 for value in transform {
                     push_f64(&mut data, *value);
                 }
                 push_point(&mut data, *origin);
-                let linkages = match name {
-                    Some(name) => string_linkage(1, name), // FN-C02
-                    None => Vec::new(),
+                let linkages = match (name, profile) {
+                    (None, _) => Vec::new(),
+                    (Some(name), Profile::MicroStation) if name.is_ascii() => {
+                        string_linkage_bytes(1, name.as_bytes()) // FN-C03
+                    }
+                    (Some(name), _) => string_linkage(1, name), // FN-C02
                 };
                 let (h, p, r) = simple(TYPE_CELL, 0, data, bounds);
                 let h = HeaderFields {
@@ -394,8 +472,14 @@ impl Element {
         Ok(Encoded { objects, range })
     }
 
-    /// Floating bounds of this element in UOR.
+    /// Floating bounds of this element in UOR, with the round-1 text box.
     pub fn bounds(&self) -> Result<Bounds> {
+        self.bounds_for(Profile::Oda)
+    }
+
+    /// Floating bounds of this element in UOR; the text box depends on the
+    /// profile (FN-T04).
+    pub fn bounds_for(&self, profile: Profile) -> Result<Bounds> {
         Ok(match &self.geometry {
             Geometry::Line { start, end } => Bounds::of_points(&[*start, *end]).unwrap(),
             Geometry::LineString(points) | Geometry::Shape(points) | Geometry::Curve(points) => {
@@ -416,11 +500,11 @@ impl Element {
                 start,
                 sweep,
             } => arc_bounds(*center, *primary, *secondary, *rotation, *start, *sweep),
-            Geometry::Text(text) => text_bounds(text),
+            Geometry::Text(text) => text_bounds(text, profile),
             Geometry::TextNode { origin, lines, .. } => {
                 let mut bounds = Bounds::of_point(*origin);
                 for (_, line) in lines {
-                    bounds = bounds.union(text_bounds(line));
+                    bounds = bounds.union(text_bounds(line, profile));
                 }
                 bounds
             }
@@ -429,7 +513,7 @@ impl Element {
             | Geometry::Cell { children, .. } => {
                 let mut bounds: Option<Bounds> = None;
                 for child in children {
-                    let child_bounds = child.bounds()?;
+                    let child_bounds = child.bounds_for(profile)?;
                     bounds = Some(bounds.map_or(child_bounds, |b| b.union(child_bounds)));
                 }
                 bounds
@@ -449,6 +533,8 @@ fn header_role(_outer: Role) -> Role {
 pub struct HeaderFields {
     pub element_type: u8,
     pub role: Role,
+    /// Extra type-word bits, for example [`TYPE_WORD_MICROSTATION_BIT`].
+    pub type_bits: u32,
     pub symbology: Symbology,
     pub element_id: u64,
     pub modified_ms: f64,
@@ -469,8 +555,8 @@ pub fn encode_object(header: &HeaderFields, primary: &[u8], linkages: &[u8]) -> 
     let mut out = Vec::with_capacity(total);
     push_u32(
         &mut out,
-        u32::from(header.element_type) | header.role.bits(),
-    ); // FN-E01
+        u32::from(header.element_type) | header.type_bits | header.role.bits(),
+    ); // FN-E01, FN-E13
     push_u32(&mut out, (total / 2) as u32); // FN-P03
     push_u32(&mut out, (primary_len / 2) as u32); // FN-P03
     push_u32(&mut out, header.symbology.level); // FN-E02
@@ -500,6 +586,13 @@ pub fn string_linkage(property_id: u32, value: &str) -> Vec<u8> {
     for unit in value.encode_utf16() {
         payload.extend_from_slice(&unit.to_le_bytes());
     }
+    string_linkage_bytes(property_id, &payload)
+}
+
+/// String linkage with a ready payload, for example plain ASCII as
+/// MicroStation writes cell names (FN-C03, FN-L03).
+#[must_use]
+pub fn string_linkage_bytes(property_id: u32, payload: &[u8]) -> Vec<u8> {
     let unpadded = 12 + payload.len();
     let total = unpadded.div_ceil(8) * 8;
     let mut out = Vec::with_capacity(total);
@@ -508,12 +601,36 @@ pub fn string_linkage(property_id: u32, value: &str) -> Vec<u8> {
     out.extend_from_slice(&STRING_LINKAGE_ID.to_le_bytes());
     push_u32(&mut out, property_id);
     push_u32(&mut out, payload.len() as u32);
-    out.extend_from_slice(&payload);
+    out.extend_from_slice(payload);
     out.resize(total, 0);
     out
 }
 
-fn text_primary(text: &TextData) -> Result<(Vec<u8>, Bounds)> {
+/// Cell range in cell coordinates: relative to the origin and before the
+/// cell matrix (FN-C03). The model box corners are mapped back, which is
+/// exact without rotation and conservative with it.
+fn cell_local_bounds(bounds: Bounds, origin: Point2, transform: &[f64; 4]) -> Result<Bounds> {
+    let [a, b, c, d] = *transform;
+    let det = a * d - b * c;
+    if det == 0.0 || !det.is_finite() {
+        return Err(WriteError::InvalidElement(
+            "cell matrix is not invertible".into(),
+        ));
+    }
+    let local = |x: f64, y: f64| {
+        let (dx, dy) = (x - origin.x, y - origin.y);
+        Point2::new((d * dx - b * dy) / det, (a * dy - c * dx) / det)
+    };
+    Ok(Bounds::of_points(&[
+        local(bounds.min.x, bounds.min.y),
+        local(bounds.max.x, bounds.min.y),
+        local(bounds.min.x, bounds.max.y),
+        local(bounds.max.x, bounds.max.y),
+    ])
+    .unwrap())
+}
+
+fn text_primary(text: &TextData, profile: Profile) -> Result<(Vec<u8>, Bounds)> {
     if !(text.height > 0.0 && text.width > 0.0) {
         return Err(WriteError::InvalidElement(
             "text size must be positive".into(),
@@ -531,7 +648,7 @@ fn text_primary(text: &TextData) -> Result<(Vec<u8>, Bounds)> {
     data.extend_from_slice(&length.to_le_bytes()); // 0x6e (FN-T02)
     push_f64(&mut data, text.width * UOR_TO_TEXT_MULTIPLIER); // 0x70 (FN-T01)
     push_f64(&mut data, text.height * UOR_TO_TEXT_MULTIPLIER); // 0x78 (FN-T01)
-    data.extend_from_slice(&[0u8; 16]); // 0x80..0x8f: zero in every sample
+    data.extend_from_slice(&[0u8; 16]); // 0x80..0x8f: zero accepted (FN-T03)
     push_f64(&mut data, text.rotation); // 0x90 (FN-T03)
     push_point(&mut data, text.origin); // 0x98 (FN-T03)
     data.extend_from_slice(&0u16.to_le_bytes()); // 0xa8 editable fields
@@ -539,13 +656,14 @@ fn text_primary(text: &TextData) -> Result<(Vec<u8>, Bounds)> {
     if data.len() % 2 != 0 {
         data.push(0);
     }
-    Ok((data, text_bounds(text)))
+    Ok((data, text_bounds(text, profile)))
 }
 
-/// Conservative text box: `n * width` long, from `-0.25 * height` (descenders)
-/// to `height` above the baseline origin, rotated. The exact box depends on
-/// font metrics the writer does not have (FN-T04).
-fn text_bounds(text: &TextData) -> Bounds {
+/// Text box, rotated: `n * width` long; vertically from `-0.25 * height` to
+/// `height` (`Oda`, round 1) or from `-0.5 * height` to `1.5 * height`, as
+/// MicroStation stores it (`MicroStation`). The exact length depends on font
+/// metrics the writer does not have (FN-T04).
+fn text_bounds(text: &TextData, profile: Profile) -> Bounds {
     let length = text.text.chars().count().max(1) as f64 * text.width;
     let (sin_r, cos_r) = text.rotation.sin_cos();
     let corner = |a: f64, b: f64| {
@@ -554,12 +672,15 @@ fn text_bounds(text: &TextData) -> Bounds {
             text.origin.y + a * sin_r + b * cos_r,
         )
     };
-    let descent = -0.25 * text.height;
+    let (descent, ascent) = match profile {
+        Profile::Oda => (-0.25 * text.height, text.height),
+        Profile::MicroStation => (-0.5 * text.height, 1.5 * text.height),
+    };
     Bounds::of_points(&[
         corner(0.0, descent),
         corner(length, descent),
-        corner(0.0, text.height),
-        corner(length, text.height),
+        corner(0.0, ascent),
+        corner(length, ascent),
     ])
     .unwrap()
 }
@@ -655,6 +776,191 @@ mod tests {
         assert_eq!(
             string_linkage(0x13, "m"),
             [0x07, 0x10, 0xd2, 0x56, 0x13, 0, 0, 0, 4, 0, 0, 0, 0xff, 0xfd, b'm', 0]
+        );
+    }
+
+    // The tests below rebuild layouts observed in MicroStation-written
+    // objects (EXP-0003, E2-E4); only the observed numbers are used here.
+
+    const MS: EncodeContext = EncodeContext {
+        modified_ms: 0.0,
+        profile: Profile::MicroStation,
+    };
+
+    fn plain(geometry: Geometry) -> Element {
+        Element {
+            symbology: Symbology {
+                level: 64,
+                ..Symbology::default()
+            },
+            geometry,
+            extra_flags: 0,
+        }
+    }
+
+    fn encode_one(element: &Element) -> Vec<Vec<u8>> {
+        element
+            .encode(&mut IdAllocator::starting_at(1288), &MS)
+            .unwrap()
+            .objects
+    }
+
+    fn u32_at(bytes: &[u8], at: usize) -> u32 {
+        u32::from_le_bytes(bytes[at..at + 4].try_into().unwrap())
+    }
+
+    fn i64_at(bytes: &[u8], at: usize) -> i64 {
+        i64::from_le_bytes(bytes[at..at + 8].try_into().unwrap())
+    }
+
+    fn f64_at(bytes: &[u8], at: usize) -> f64 {
+        f64::from_le_bytes(bytes[at..at + 8].try_into().unwrap())
+    }
+
+    fn text(text: &str, origin: Point2, height: f64) -> TextData {
+        TextData {
+            text: text.into(),
+            encoding: TextEncoding::Auto,
+            origin,
+            rotation: 0.0,
+            height,
+            width: height,
+            font: 1025,
+            justification: 0,
+        }
+    }
+
+    #[test]
+    fn microstation_profile_sets_type_bit_and_clears_properties() {
+        // E2 line: type word 0x10800003, properties 0 (FN-E13).
+        let line = plain(Geometry::Line {
+            start: Point2::new(0.0, 0.0),
+            end: Point2::new(0.0, 105_000.0),
+        });
+        let objects = encode_one(&line);
+        assert_eq!(u32_at(&objects[0], 0), 0x1080_0003);
+        assert_eq!(u32_at(&objects[0], 0x24), 0);
+        assert_eq!(u32_at(&objects[0], 0x28), 0);
+    }
+
+    #[test]
+    fn microstation_text_range_spans_half_height_below_to_one_and_a_half_above() {
+        // E3: 0.25 m text (2500 UOR) at y 51866.3 stores low y 50616 and
+        // extent 5001 (FN-T04).
+        let element = plain(Geometry::Text(text(
+            "Gl",
+            Point2::new(15314.98, 51866.3),
+            2500.0,
+        )));
+        let object = &encode_one(&element)[0];
+        assert_eq!(i64_at(object, 0x38), 15314);
+        assert_eq!(i64_at(object, 0x40), 50616);
+        assert_eq!(i64_at(object, 0x58), 5001);
+    }
+
+    #[test]
+    fn microstation_text_node_writes_style_block() {
+        // E4 node: font 1025, 255, justification 0, spacing 5000 UOR,
+        // size multipliers of a 2500-UOR text (FN-N02).
+        let style = TextNodeStyle {
+            font: 1025,
+            justification: 0,
+            line_spacing: 5000.0,
+            width: 2500.0,
+            height: 2500.0,
+        };
+        let node = plain(Geometry::TextNode {
+            origin: Point2::new(89580.4, 35926.5),
+            rotation: 0.0,
+            node_number: 1,
+            style,
+            lines: vec![
+                (
+                    Symbology::default(),
+                    text("two line", Point2::new(89580.4, 33426.5), 2500.0),
+                ),
+                (
+                    Symbology::default(),
+                    text("text", Point2::new(89580.4, 25926.5), 2500.0),
+                ),
+            ],
+        });
+        let objects = encode_one(&node);
+        let header = &objects[0];
+        assert_eq!(u32_at(header, 0), 0x3080_0007);
+        assert_eq!(
+            &header[0x68..0x78],
+            &[2, 0, 0, 0, 1, 0, 0, 0, 0x01, 0x04, 0, 0, 0xff, 0, 0, 0]
+        );
+        assert_eq!(f64_at(header, 0x78), 5000.0);
+        assert_eq!(f64_at(header, 0x80), 2500.0 * UOR_TO_TEXT_MULTIPLIER);
+        // E4 node range: low (89580, 24676), extent (11695, 12501) with
+        // MicroStation's own text length; the vertical part is ours too.
+        assert_eq!(i64_at(header, 0x40), 24676);
+        assert_eq!(i64_at(header, 0x58), 12501);
+        assert_eq!(u32_at(&objects[1], 0), 0x5080_0011);
+    }
+
+    #[test]
+    fn microstation_cell_stores_local_range_and_ascii_name() {
+        // E4 cell: origin (46722.0, 23993.5), local range (-4061, 0) to
+        // (4061, 15000), 0x6c = 01 00 01 00, 6-letter ASCII name in a
+        // 24-byte linkage (FN-C03).
+        let origin = Point2::new(46722.0, 23993.5);
+        let cell = Element {
+            symbology: Symbology::default(),
+            geometry: Geometry::Cell {
+                name: Some("ABCDEF".into()),
+                origin,
+                transform: [1.0, 0.0, 0.0, 1.0],
+                children: vec![
+                    plain(Geometry::Line {
+                        start: Point2::new(origin.x - 4061.0, origin.y),
+                        end: Point2::new(origin.x + 4061.0, origin.y),
+                    }),
+                    plain(Geometry::Line {
+                        start: origin,
+                        end: Point2::new(origin.x, origin.y + 15000.0),
+                    }),
+                ],
+            },
+            extra_flags: 0,
+        };
+        let header = &encode_one(&cell)[0];
+        assert_eq!(u32_at(header, 0), 0x3080_0002);
+        assert_eq!(&header[0x68..0x70], &[2, 0, 0, 0, 1, 0, 1, 0]);
+        assert_eq!(
+            [
+                f64_at(header, 0x70),
+                f64_at(header, 0x78),
+                f64_at(header, 0x80),
+                f64_at(header, 0x88)
+            ],
+            [-4061.0, 0.0, 4061.0, 15000.0]
+        );
+        assert_eq!(i64_at(header, 0x38), 42661);
+        assert_eq!(
+            &header[0xc0..],
+            &[
+                0x0b, 0x10, 0xd2, 0x56, 1, 0, 0, 0, 6, 0, 0, 0, b'A', b'B', b'C', b'D', b'E', b'F',
+                0, 0, 0, 0, 0, 0
+            ]
+        );
+    }
+
+    #[test]
+    fn cell_local_range_undoes_rotation_and_scale() {
+        // 90 degrees and scale 2: model box (0..2, 0..4) around origin (0, 0)
+        // is local (0..2, -1..0).
+        let local = cell_local_bounds(
+            Bounds::of_points(&[Point2::new(0.0, 0.0), Point2::new(2.0, 4.0)]).unwrap(),
+            Point2::new(0.0, 0.0),
+            &[0.0, -2.0, 2.0, 0.0],
+        )
+        .unwrap();
+        assert_eq!(
+            (local.min, local.max),
+            (Point2::new(0.0, -1.0), Point2::new(2.0, 0.0))
         );
     }
 }
