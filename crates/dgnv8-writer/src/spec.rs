@@ -2,8 +2,9 @@
 //!
 //! Coordinates are in master units (metres for ADTI), angles in degrees.
 //! The job names a seed file; every element is appended to one of its models.
-//! Levels are given by ID or by name from the seed's level table; colour,
-//! weight and line style by number or as `"by_level"`.
+//! Levels are given by ID or by name from the seed's level table; levels
+//! listed under `levels` are added to the seed when it lacks them. Colour,
+//! weight and line style are given by number or as `"by_level"`.
 
 use std::path::{Path, PathBuf};
 
@@ -43,6 +44,9 @@ pub struct JobSpec {
     /// (FN-V02).
     #[serde(default)]
     pub allow_unknown_levels: bool,
+    /// Levels to add to the seed when it lacks them (FN-V03).
+    #[serde(default)]
+    pub levels: Vec<LevelDecl>,
     #[serde(default)]
     pub defaults: Defaults,
     pub elements: Vec<ElementSpec>,
@@ -70,6 +74,15 @@ impl Default for Defaults {
             text_height: 1.0,
         }
     }
+}
+
+/// A level the job wants in the file (FN-V03).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LevelDecl {
+    pub name: String,
+    #[serde(default)]
+    pub description: Option<String>,
 }
 
 /// A level by ID, or by exact name from the seed's level table (FN-V01).
@@ -254,6 +267,9 @@ pub fn run_job(job_path: &Path) -> Result<(PathBuf, crate::document::SaveReport)
         .map_err(|error| WriteError::InvalidInput(format!("{}: {error}", job_path.display())))?;
     let base = job_path.parent().unwrap_or_else(|| Path::new("."));
     let mut document = Document::from_seed_path(base.join(&job.seed), job.model)?;
+    for level in &job.levels {
+        document.ensure_level(&level.name, level.description.as_deref())?;
+    }
     let mut elements = Vec::with_capacity(job.elements.len());
     let target = Target {
         document: &document,
@@ -294,11 +310,10 @@ impl Target<'_> {
     /// must be in the seed's level table (FN-V02), except 0, the cell
     /// header level (FN-C01).
     fn resolve_level(&self, level: &LevelSpec) -> Result<u32> {
-        let info = self.document.info();
+        let document = self.document;
         let known = || {
-            let names: Vec<String> = info
-                .levels
-                .iter()
+            let names: Vec<String> = document
+                .levels()
                 .map(|level| format!("{} = {}", level.name, level.id))
                 .collect();
             names.join(", ")
@@ -307,7 +322,7 @@ impl Target<'_> {
             LevelSpec::Id(id) => {
                 if *id == 0
                     || self.allow_unknown_levels
-                    || info.levels.iter().any(|level| level.id == *id)
+                    || document.levels().any(|level| level.id == *id)
                 {
                     Ok(*id)
                 } else {
@@ -317,9 +332,10 @@ impl Target<'_> {
                     )))
                 }
             }
-            LevelSpec::Name(name) => info.level_id(name).ok_or_else(|| {
+            LevelSpec::Name(name) => document.level_id(name).ok_or_else(|| {
                 WriteError::InvalidInput(format!(
-                    "level {name:?} is not in the seed's level table (it has: {})",
+                    "level {name:?} is not in the seed's level table (it has: {}); \
+                     list it under \"levels\" to add it",
                     known()
                 ))
             }),
@@ -643,7 +659,8 @@ mod tests {
             Profile::Oda,
             r#"{ "type": "line", "points": [[0, 0], [1, 0]], "level": "NO_SUCH_LEVEL" }"#,
         );
-        assert!(missing.unwrap_err().to_string().contains("Default = 64"));
+        let message = missing.unwrap_err().to_string();
+        assert!(message.contains("Default = 64") && message.contains("\"levels\""));
         // R04b: an ID the level table lacks is refused (FN-V02).
         let unknown = build_with(
             Profile::Oda,

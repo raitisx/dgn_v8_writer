@@ -57,7 +57,9 @@ which you supply as `private/adti_seed.dgn`).
   MicroStation itself stores them in the ADTI seed; `"oda"` keeps the
   round-1 conventions of GDAL's ODA-written sample.
 - `"level"` is a level ID or a level name from the seed's level table
-  (`dgnv8w inspect` lists them). Levels the seed lacks are refused.
+  (`dgnv8w inspect` lists them). A job can add levels the seed lacks by
+  listing them under `"levels"`, each with a `"name"` and an optional
+  `"description"`; other unknown levels are refused.
 - `"color"`, `"weight"` and `"style"` take a number or `"by_level"`.
 
 ## Licence

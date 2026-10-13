@@ -274,3 +274,54 @@ fn optional_file_header_counter_update() {
     let info = dgnv8_writer::analyse(&bytes, None).unwrap();
     assert_eq!(info.file_header_id_counter, Some(96));
 }
+
+#[test]
+fn added_levels_are_in_the_level_table() {
+    // FN-V03: the new entry copies the sample's "Default" entry, gets the
+    // lowest free level ID and the next element ID, and the table header
+    // counts it.
+    let mut doc = document();
+    let id = doc.ensure_level("ZZ_NEW", Some("Pārbaude")).unwrap();
+    assert_eq!(id, 1);
+    assert_eq!(doc.ensure_level("ZZ_NEW", None).unwrap(), 1);
+    assert_eq!(doc.ensure_level("Default", None).unwrap(), 64);
+    assert!(doc.ensure_level("zz_new", None).is_err());
+    let start = doc.master_to_uor(0.0, 0.0);
+    let end = doc.master_to_uor(1.0, 0.0);
+    doc.add(Element {
+        symbology: sym(id, 3),
+        geometry: Geometry::Line { start, end },
+        extra_flags: 0,
+    });
+    let (bytes, report) = doc.to_bytes(&options()).unwrap();
+    assert_eq!(report.level_page.as_deref(), Some("/Dgn^Nm/$1"));
+    assert_eq!(report.first_element_id, 96);
+    assert_eq!(report.last_element_id, 97);
+
+    let info = dgnv8_writer::analyse(&bytes, None).unwrap();
+    let names: Vec<(u32, &str)> = info
+        .levels
+        .iter()
+        .map(|level| (level.id, level.name.as_str()))
+        .collect();
+    assert_eq!(names, [(1, "ZZ_NEW"), (64, "Default")]);
+    assert_eq!(info.max_element_id, 97);
+
+    // The independent reader still parses every page; the line is on level 1.
+    let read = read_v8(&bytes, V8ScanOptions::default()).unwrap();
+    let line = read.models[0].elements.last().unwrap();
+    assert_eq!((line.common.element_id, line.common.level), (97, 1));
+
+    // The table header counts two entries; the page header grew by one.
+    let mut compound = cfb::CompoundFile::open(std::io::Cursor::new(bytes)).unwrap();
+    let mut raw = Vec::new();
+    std::io::Read::read_to_end(&mut compound.open_stream("/Dgn^Nm/$1").unwrap(), &mut raw).unwrap();
+    let page = dgnv8_writer::page::Page::parse(&raw).unwrap();
+    assert_eq!((page.header.record_count, page.header.population), (26, 26));
+    let header = page
+        .objects
+        .iter()
+        .find(|object| object.element_type() == 96 && object.bytes[0x0c] == 1)
+        .unwrap();
+    assert_eq!(header.bytes[0x20], 2);
+}

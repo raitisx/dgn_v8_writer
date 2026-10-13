@@ -111,7 +111,9 @@ checklist is in
 
 Round 3 is one file, `R06_text_node_edit.dgn`, for the text node editing
 problem; its checklist is in
-[`research/EXP-0005`](../research/EXP-0005-text-node-editing.md).
+[`research/EXP-0005`](../research/EXP-0005-text-node-editing.md). Round 4
+is `R07_new_levels.dgn`, levels added by the writer; its checklist is in
+[`research/EXP-0006`](../research/EXP-0006-new-levels.md).
 
 To rebuild them yourself: copy the empty ADTI seed (E1) to
 `private/adti_seed.dgn` in this repository, then run

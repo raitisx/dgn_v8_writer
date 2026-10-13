@@ -1,8 +1,9 @@
 //! Seed + append writer.
 //!
-//! The seed is copied unchanged except for three things: the model's last
-//! graphic page receives the new objects, the model header extents grow to
-//! cover them, and (only on request) the `Dgn~H` ID counter is raised.
+//! The seed is copied unchanged except for: the model's last graphic page,
+//! which receives the new objects; the model header extents, which grow to
+//! cover them; the level table, when the job adds levels (FN-V03); and (only
+//! on request) the `Dgn~H` ID counter.
 //! [`Profile`] selects ODA or MicroStation conventions where they differ.
 
 use std::io::Write;
@@ -12,10 +13,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::element::{Element, EncodeContext, IdAllocator, Profile};
 use crate::error::{Result, WriteError};
 use crate::geom::{Point2, RangeI64};
+use crate::level::{add_levels, note_appended, NewLevel};
 use crate::page::{deflate, inflate, Page, PageHeader, PageObject};
 use crate::seed::{
     analyse_compound, find_model_header, open_compound, read_stream, Compound, Dimension,
-    ModelHeaderLocation, SeedInfo, FILE_HEADER_ID_COUNTER_OFFSET, FILE_HEADER_PREFIX_BYTES,
+    LevelEntry, ModelHeaderLocation, SeedInfo, FILE_HEADER_ID_COUNTER_OFFSET,
+    FILE_HEADER_PREFIX_BYTES,
 };
 
 /// Switches for one save.
@@ -37,6 +40,7 @@ pub struct Document {
     seed: Vec<u8>,
     info: SeedInfo,
     elements: Vec<Element>,
+    new_levels: Vec<NewLevel>,
 }
 
 /// Result of a save, for reporting.
@@ -49,6 +53,11 @@ pub struct SaveReport {
     pub extents_low_uor: [i64; 3],
     pub extents_high_uor: [i64; 3],
     pub file_header_counter_written: Option<u64>,
+    /// Levels added to the seed's level table, and the page holding it.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub levels_created: Vec<NewLevel>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub level_page: Option<String>,
 }
 
 impl Document {
@@ -60,6 +69,7 @@ impl Document {
             seed,
             info,
             elements: Vec::new(),
+            new_levels: Vec::new(),
         })
     }
 
@@ -91,6 +101,56 @@ impl Document {
         self.elements.push(element);
     }
 
+    /// Every level: the seed's own, then the ones added to this document.
+    pub fn levels(&self) -> impl Iterator<Item = LevelEntry> + '_ {
+        self.info
+            .levels
+            .iter()
+            .cloned()
+            .chain(self.new_levels.iter().map(NewLevel::entry))
+    }
+
+    /// Level ID for an exact level name, including added levels.
+    #[must_use]
+    pub fn level_id(&self, name: &str) -> Option<u32> {
+        self.levels()
+            .find(|level| level.name == name)
+            .map(|level| level.id)
+    }
+
+    /// Make sure a level `name` exists and return its ID. A level the seed
+    /// already has is reused; otherwise a new level gets the lowest free ID
+    /// from 1, as MicroStation numbered the level it added (FN-V03).
+    pub fn ensure_level(&mut self, name: &str, description: Option<&str>) -> Result<u32> {
+        if let Some(id) = self.level_id(name) {
+            return Ok(id);
+        }
+        if name.is_empty() || name.contains('\0') {
+            return Err(WriteError::InvalidInput(format!(
+                "level name {name:?} is not valid"
+            )));
+        }
+        if let Some(other) = self
+            .levels()
+            .find(|level| level.name.to_lowercase() == name.to_lowercase())
+        {
+            return Err(WriteError::InvalidInput(format!(
+                "level {name:?} differs only in letter case from existing level {:?}",
+                other.name
+            )));
+        }
+        let used: Vec<u32> = self.levels().map(|level| level.id).collect();
+        let id = (1..)
+            .find(|candidate| !used.contains(candidate))
+            .expect("a free level ID");
+        self.new_levels.push(NewLevel {
+            id,
+            name: name.to_owned(),
+            description: description.map(str::to_owned),
+        });
+        Ok(id)
+    }
+
     #[must_use]
     pub fn elements(&self) -> &[Element] {
         &self.elements
@@ -109,6 +169,19 @@ impl Document {
         };
         let mut ids = IdAllocator::starting_at(self.info.max_element_id + 1);
         let first_element_id = self.info.max_element_id + 1;
+        let mut compound = open_compound(self.seed.clone())?;
+        // New levels first, as MicroStation creates a level before placing
+        // elements on it (FN-V03).
+        let level_page = if self.new_levels.is_empty() {
+            None
+        } else {
+            Some(add_levels(
+                &mut compound,
+                &self.new_levels,
+                &mut ids,
+                &context,
+            )?)
+        };
         let mut new_objects = Vec::new();
         let mut range: Option<RangeI64> = None;
         for element in &self.elements {
@@ -117,7 +190,6 @@ impl Document {
             new_objects.extend(encoded.objects);
         }
 
-        let mut compound = open_compound(self.seed.clone())?;
         let page_path = self.append_objects(&mut compound, &new_objects, options.profile)?;
 
         // Grow the model extents (FN-M05).
@@ -151,6 +223,8 @@ impl Document {
                 extents_low_uor: extents.low,
                 extents_high_uor: extents.high,
                 file_header_counter_written,
+                levels_created: self.new_levels.clone(),
+                level_page,
             },
         ))
     }
@@ -191,17 +265,7 @@ impl Document {
                 )
             }
         };
-        let added = objects.len() as u32;
-        page.header.record_count += added;
-        match profile {
-            // ODA keeps population equal to the record count (FN-P01).
-            Profile::Oda => page.header.population += added,
-            // MicroStation stores page number 0 and population 0 (FN-P05).
-            Profile::MicroStation => {
-                page.header.page_number = 0;
-                page.header.population = 0;
-            }
-        }
+        note_appended(&mut page.header, objects.len() as u32, profile); // FN-P01, FN-P05
         page.objects.extend(objects.iter().map(|bytes| PageObject {
             prefix: 0, // FN-P02: always zero in the evidence
             bytes: bytes.clone(),

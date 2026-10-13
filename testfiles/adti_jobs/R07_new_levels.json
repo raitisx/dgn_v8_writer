@@ -1,0 +1,18 @@
+{ "seed": "../../private/adti_seed.dgn", "modified_ms": 1792108800000, "output": "../../private/round2/R07_new_levels.dgn",
+  "levels": [
+    { "name": "ZZ_TEST_A", "description": "Pārbaudes līmenis A" },
+    { "name": "ZZ_TEST_B" },
+    { "name": "ZZ_LĪMENIS_Ā", "description": "Latviešu burti nosaukumā" },
+    { "name": "ZZ_UNUSED", "description": "Bez elementiem" }
+  ],
+  "defaults": { "level": "ZZ_TEST_A", "color": 3, "font": 1025, "text_height": 0.5 },
+  "elements": [
+    { "type": "line", "points": [[0, 0], [10, 0]] },
+    { "type": "shape", "points": [[0, 2], [4, 2], [4, 4], [0, 4]], "level": "ZZ_TEST_B", "color": 4 },
+    { "type": "text", "text": "ZZ_LĪMENIS_Ā", "origin": [6, 2], "level": "ZZ_LĪMENIS_Ā", "color": 5 },
+    { "type": "text_node", "lines": ["Mezgls ZZ_TEST_B", "otrā rinda"], "origin": [0, 8], "level": "ZZ_TEST_B", "color": 6 },
+    { "type": "cell", "name": "ADTI_TEST", "origin": [14, 3], "parts": [
+        { "type": "shape", "points": [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]] },
+        { "type": "line", "points": [[-0.5, -0.5], [0.5, 0.5]] } ] },
+    { "type": "line", "points": [[0, -2], [10, -2]], "level": "Default", "color": 1 }
+  ] }

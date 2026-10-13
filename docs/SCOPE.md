@@ -16,11 +16,11 @@ only:
 3. only with an experiment switch, the `Dgn~H` ID counter (H-H02; MicroStation
    does not need it).
 
-Levels, colours, line styles, fonts and units all come from the seed.
-Elements refer to them by number; levels can also be named, from the
-seed's level table (FN-V01). The ADTI seed contains only the level
-"Default", so ADTI level names need a working seed with the ADTI levels
-imported (EXP-0003 obs. 9).
+Colours, line styles, fonts and units come from the seed, and elements
+refer to them by number. Levels are named: from the seed's level table
+(FN-V01), or added to it by the writer when the job lists them (FN-V03).
+The ADTI seed contains only the level "Default", so ADTI levels are added
+this way (EXP-0006).
 
 ## Profiles
 
@@ -60,21 +60,23 @@ products.
 | Text node | 7 | FN-N01–FN-N04 | Both lines display (T02) | Displays (R02); with the line-break linkage, lines stay apart when edited (EXP-0005) |
 | Cell, unnamed | 2 | FN-C01, FN-C03 | Origin, scale, angle, element count (T05) | Displays (R03) |
 | Cell, named | 2 | FN-C02, FN-C03 | Name shown (T06) | ASCII and Latvian names, rotation, scale (R03) |
-| Shared cell | 35/34 | — | Not started | Not started |
+| Shared cell | 35/34 | — | Not started | Not needed: ADTI symbols are normal cells |
+| Added level | 95 | FN-V03, H-V04 | — | In round 4 (EXP-0006) |
 
 "—" means not tested in that round.
 
 ## Not in scope
 
 3D models, B-splines, dimensions, tags and Item Types, XAttributes, editing
-or deleting existing elements, creating levels, fonts or line styles, and
-reading (use ezdgn).
+or deleting existing elements, creating fonts or line styles, and reading
+(use ezdgn). Shared cells: ADTI symbols are placed as normal cells, which
+the writer supports.
 
 ## Open questions, in order
 
 1. Text node justifications other than 0, 1 and 2 need line lengths.
-2. How ADTI levels get into the working seed: imported by the user in
-   MicroStation, or written by a later version of this tool.
+2. Added levels (FN-V03, EXP-0006): does MicroStation accept them, and how
+   are a level's own colour, weight and style stored (optional E6)?
 3. Page size limits for large drawings (E5, not made yet).
 4. Text width as MicroStation computes it, for centred and right-justified
    placement (EXP-0003 obs. 6 gives one data point).
