@@ -101,7 +101,8 @@ Also useful:
    name to report for font 1025; still open. Text node justification codes
    0, 1 and 2 are shown as Left Top, Left Middle and Left Baseline. V8i
    called codes 1 and 2 of a text Left Center and Left Bottom (EXP-0002
-   T08). Node origins were not read, so H-N03 stays open.
+   T08). Node origins were read in EXP-0005 (FN-N04). The font name was
+   reported there: Arial.
 5. **Editing a text node merges its lines.** After editing a text node and
    saving, its two lines became one. MicroStation's own nodes carry a
    `0x80d4` linkage on each line, with `0x80` at byte 8 on every line but
@@ -111,8 +112,10 @@ Also useful:
    and scale display as written (FN-C02, FN-C03).
 7. **Unknown level.** For the line on level ID 1, which the seed's level
    table lacks, the tester saw "nothing, just blank": no message and no
-   level shown. The writer now refuses level IDs that are not in the seed's
-   level table (FN-V02); R04b sets `allow_unknown_levels` to rebuild.
+   level shown. Asked afterwards (2026-10-14), the tester confirmed the line
+   itself is visible. The writer now refuses level IDs that are not in the
+   seed's level table (FN-V02); R04b sets `allow_unknown_levels` to
+   rebuild.
 8. **Coordinates.** MicroStation shows the text origin of R05 as 506000.000,
    311998.000: x is the first coordinate, as written. EXP-0003 obs. 5 is
    explained too: the line in E2 was typed as `xy=0,10.50`.

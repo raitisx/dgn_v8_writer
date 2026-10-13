@@ -459,7 +459,7 @@ fn to_element(
             let node_origin = match profile {
                 Profile::Oda => *origin, // first line's origin (FN-N01)
                 Profile::MicroStation => {
-                    // Justification point of the node box (FN-N02, H-N03).
+                    // Justification point of the node box (FN-N02, FN-N04).
                     let block = lines.len() as f64 * pitch - spacing;
                     let up = match justification {
                         0 => height,                      // left top

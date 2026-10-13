@@ -53,11 +53,11 @@ products.
 | Complex shape | 14 | FN-X01, golden 82 | Recognised with components (T01, T07) | Displays (R01) |
 | Text, ASCII | 17 | FN-T01–T04, golden 40, 43 | Correct; font, size, angle shown (T02) | Displays (R02) |
 | Text with Latvian letters | 17 | FN-T05 (`ff fd`), FN-T07 (`ff fe`, the default) | `ff fd` correct (T04) | Both forms correct (R02) |
-| Text justification | 17 | FN-T03, FN-T06 | Codes 0, 1, 2, 7, 12, 14 (T02, T08) | Node codes 0, 1, 2 named Left Top, Left Middle, Left Baseline (R02) |
+| Text justification | 17 | FN-T03, FN-T06 | Codes 0, 1, 2, 7, 12, 14 (T02, T08) | Node codes 0, 1, 2 named Left Top, Left Middle, Left Baseline (R02), origins as written (EXP-0005) |
 | Line style and weight | all | FN-E11 | Confirmed on lines and text (T07, T08) | Colour 3, weight 2, style 2 as written (R04) |
 | ByLevel colour, weight, style | all | FN-E14 | — | Shown as ByLevel (R04) |
 | Level by name | all | FN-V01, FN-V02 | — | "Default" by name (R01); unknown IDs now refused (R04b) |
-| Text node | 7 | FN-N01, FN-N02, FN-N03 | Both lines display (T02) | Displays (R02); with the line-break linkage, lines stay apart when edited (EXP-0005) |
+| Text node | 7 | FN-N01–FN-N04 | Both lines display (T02) | Displays (R02); with the line-break linkage, lines stay apart when edited (EXP-0005) |
 | Cell, unnamed | 2 | FN-C01, FN-C03 | Origin, scale, angle, element count (T05) | Displays (R03) |
 | Cell, named | 2 | FN-C02, FN-C03 | Name shown (T06) | ASCII and Latvian names, rotation, scale (R03) |
 | Shared cell | 35/34 | — | Not started | Not started |
@@ -72,17 +72,17 @@ reading (use ezdgn).
 
 ## Open questions, in order
 
-1. Text node justifications 1 and 2 (H-N03); others need line lengths.
+1. Text node justifications other than 0, 1 and 2 need line lengths.
 2. How ADTI levels get into the working seed: imported by the user in
    MicroStation, or written by a later version of this tool.
-3. The font name of font 1025 in the ADTI workspace.
-4. Page size limits for large drawings (E5, not made yet).
-5. Text width as MicroStation computes it, for centred and right-justified
+3. Page size limits for large drawings (E5, not made yet).
+4. Text width as MicroStation computes it, for centred and right-justified
    placement (EXP-0003 obs. 6 gives one data point).
-6. ADTI line styles: the seed's kind-19 table has names in the ADTI code
+5. ADTI line styles: the seed's kind-19 table has names in the ADTI code
    pattern; their use by ID is untested.
 
 Settled: x is the first coordinate as MicroStation shows it (506000 in
 R05); MicroStation accepts the `Dgn~Mh` and `Dgn~Mix` fields the writer
 leaves untouched (EXP-0004 obs. 1, 8); text node lines stay apart when
-edited with the line-break linkage (FN-N03, EXP-0005).
+edited with the line-break linkage (FN-N03, EXP-0005); node origins for
+justifications 1 and 2 (FN-N04); font 1025 is Arial in the ADTI seed.

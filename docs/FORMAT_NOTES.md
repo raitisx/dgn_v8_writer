@@ -257,9 +257,13 @@ Evidence: ezdgn @e7d72db; golden tests 40, 43; unit test `text::tests`;
 EXP-0002 T00, T02.
 
 ### FN-T03 Font, justification, rotation, origin
-Status: Confirmed for font 1024 and the justification codes in FN-T06. 0x68 u32
-font number; 0x6c u16 justification; 0x80–0x8f zero; 0x90 rotation (rad);
-0x98 origin.
+Status: Confirmed for fonts 1024 and 1025 and the justification codes in
+FN-T06. 0x68 u32 font number; 0x6c u16 justification; 0x80–0x8f zero;
+0x90 rotation (rad); 0x98 origin. Font numbers are looked up in the
+file's font table, so the same name can have different numbers in
+different seeds.
+MicroStation: font 1025 shows as "Arial" in the ADTI seed with CONNECT
+v10 (EXP-0005), as font 1024 does in GDAL's sample with V8i (T02).
 MicroStation writes: at 0x80 the text's length in UOR as it measured it,
 at 0x88 its height in UOR (E3, E4); the writer keeps zeros, which
 MicroStation accepts (T02).
@@ -272,7 +276,8 @@ origin + (0, height) (T02: 20,50 → 20,51); code 7 "Center Center" gives
 origin + (width/2, height/2) with MicroStation's own width from the font
 (T08: "J7" at 30,15 → 30.7062,15.5). Rotation 30° displays as written.
 Font 127 draws lowercase as capitals in this MicroStation setup.
-Evidence: golden tests 40, 43; EXP-0002 T02, T08; EXP-0003 obs. 6.
+Evidence: golden tests 40, 43; EXP-0002 T02, T08; EXP-0003 obs. 6;
+EXP-0005.
 
 ### FN-T06 Justification codes
 Status: Confirmed for codes 0, 1, 2, 7, 12 and 14; the other codes are
@@ -363,14 +368,21 @@ Evidence: EXP-0003 obs. 7; EXP-0004 obs. 4, 5; unit tests
 Status: Promoted to FN-N02.
 Evidence: EXP-0003 obs. 7.
 
-### H-N03 Text node origin for left-centre and left-bottom
-Status: Hypothesis. For justification 1 the node origin is the middle of
-the left edge of the node box, for 2 the first character of the last
-baseline (box: n × height + (n − 1) × spacing). Other justifications need
-line lengths and are refused for now.
+### FN-N04 Text node origin for left-middle and left-baseline
+Status: Confirmed. For justification 1 the node origin is the middle of
+the left edge of the node box, for 2 the start of the last baseline (box:
+n × height + (n − 1) × spacing, its top one height above the first
+baseline). Other justifications need line lengths and are refused for
+now.
 MicroStation: names codes 1 and 2 "Left Middle" and "Left Baseline"
-(EXP-0004 R02); the stored origins were not read yet.
-Evidence: EXP-0004 obs. 4 (names only); origins in EXP-0005.
+(EXP-0004 R02), and reports the origins written: 0,4.75 and 10,4.25 for
+first baselines at 0,5 and 10,5 (EXP-0005 D, E).
+Evidence: EXP-0004 obs. 4; EXP-0005; unit test
+`spec::tests::microstation_text_node_origin_is_its_justification_point`.
+
+### H-N03 Text node origin for left-centre and left-bottom
+Status: Promoted to FN-N04.
+Evidence: EXP-0005.
 
 ### FN-N03 Line-break linkage on text node lines
 Status: Confirmed. Each line of a text node carries a 24-byte linkage
@@ -385,7 +397,8 @@ none.
 MicroStation: CONNECT v10 merged the lines of an edited node without the
 linkage (node A, and EXP-0004 R02) and kept them apart with the
 line-break linkage alone (node B) and with both linkages (nodes C–F,
-justifications 0, 1, 2, three Latvian lines) (EXP-0005).
+justifications 0, 1, 2, three Latvian lines) (EXP-0005). A single text
+without either linkage stays in place when edited (EXP-0005 G).
 Evidence: EXP-0003 obs. 7 (bytes); EXP-0004 obs. 5; EXP-0005; unit tests
 `element::tests::node_linkage_experiment_mirrors_e4`,
 `spec::tests::microstation_text_node_origin_is_its_justification_point`.
@@ -492,11 +505,12 @@ Evidence: EXP-0003 obs. 9; EXP-0004 obs. 3; unit test
 `seed::tests::reads_the_level_table_of_the_sample`.
 
 ### FN-V02 Level IDs must exist in the seed
-Status: Provisional. An element on a level ID that the seed's level table
-lacks opens without a message, but MicroStation shows no level for it
-("nothing, just blank"), and creates no level. The writer refuses such IDs
-unless the job sets `allow_unknown_levels`; level 0, used by cell headers
-(FN-C01), is always allowed.
+Status: Confirmed. An element on a level ID that the seed's level table
+lacks opens without a message and is drawn, but MicroStation shows no
+level for it ("nothing, just blank") and creates none, so it cannot be
+managed through Level Manager. The writer refuses such IDs unless the job
+sets `allow_unknown_levels`; level 0, used by cell headers (FN-C01), is
+always allowed.
 MicroStation: EXP-0004 R04b.
 Evidence: EXP-0004 obs. 7; unit test
 `spec::tests::level_names_and_by_level_resolve`.

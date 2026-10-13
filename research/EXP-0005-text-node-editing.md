@@ -8,7 +8,7 @@
 | Seed | The empty ADTI LKS-2020 seed, E1 of EXP-0003 (SHA-256 `431af1fd…a757c8`) |
 | Files tested | `R06_text_node_edit.dgn`, built with `testfiles/adti_jobs/R06_text_node_edit.json`; SHA-256 `e1aa08b3c345602f097df81727f0899bd8cad9b5cb5f7e1f3c8ee63222ca4a80` |
 | Storage | Not in this repository (contains VZD seed content); rebuild as described in EXP-0004 |
-| Status | Done for H-N04 (promoted to FN-N03). Not reported: node origins of D and E (H-N03), save and reopen, the single text G, the font name |
+| Status | Done. H-N04 promoted to FN-N03, H-N03 to FN-N04. Not reported: save, close and reopen (checklist item 3) |
 | Decides | H-N04 (which linkages keep the lines of an edited node apart), H-N03 (node origin for justifications 1 and 2) |
 
 ## Why
@@ -63,6 +63,15 @@ Tester's report: "R06: A breaks, rest not".
 | D, E | both, justification 1 and 2 | Lines kept |
 | F | both, three Latvian lines | Lines kept |
 
+Follow-up answers (2026-10-14), to the questions in checklist order:
+
+| Check | Answer |
+| --- | --- |
+| Origins of D and E are 0,4.75 and 10,4.25 | "yes" |
+| G stays in place when edited | "yes" |
+| Font name of font 1025 | "Arial" |
+| (EXP-0004 R04b) the line on the missing level is visible | "visible" |
+
 ## Conclusion
 
 The `0x80d4` linkage with the line-break byte is enough to keep the lines
@@ -72,3 +81,7 @@ now writes `line_breaks` on every text node unless the job says otherwise.
 This is exactly node B, so no new test file is needed. The R02 job of
 EXP-0004 now says `"linkages": "none"`, so it still rebuilds the file that
 was tested.
+
+The node origins for justifications 1 and 2 match the writer's rule, so
+H-N03 becomes FN-N04. A single text needs no linkage to stay in place when
+edited. Font 1025 is Arial in the ADTI seed.
