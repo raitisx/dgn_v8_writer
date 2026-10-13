@@ -1,4 +1,5 @@
 {
+  "profile": "oda",
   "seed": "../../crates/dgnv8-writer/tests/data/gdal_test_dgnv8.dgn",
   "output": "../T01b_line_string.dgn",
   "modified_ms": 1790640000000,

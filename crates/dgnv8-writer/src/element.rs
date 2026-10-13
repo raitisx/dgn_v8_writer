@@ -42,6 +42,21 @@ pub const FLAG_HOLE: u32 = 0x0000_8000;
 pub const UOR_TO_TEXT_MULTIPLIER: f64 = 1000.0 / 6.0;
 /// Property/string linkage identifier (FN-L02).
 pub const STRING_LINKAGE_ID: u16 = 0x56d2;
+/// Linkage MicroStation attaches to every text and text node (H-N04), as
+/// written in EXP-0003 E4. Byte 8 is `0x80` on node lines that end with a
+/// line break, else 0.
+pub const TEXT_RUN_LINKAGE: [u8; 24] = [
+    0x0b, 0x10, 0xd4, 0x80, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x20, 0x30, 0xe9, 0x04, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+];
+/// Offset of the line-break byte in [`TEXT_RUN_LINKAGE`] (H-N04).
+pub const TEXT_RUN_LINE_BREAK_AT: usize = 8;
+/// Second linkage on every MicroStation text and text node, holding f64 1.0
+/// (H-N04).
+pub const TEXT_SCALE_LINKAGE: [u8; 24] = [
+    0x0b, 0x10, 0xf3, 0x56, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf0, 0x3f,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+];
 
 /// Position of an object inside a complex element (FN-E01).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -86,6 +101,21 @@ pub struct TextData {
     /// Bottom, 7 Center Center, 12 Right Top, 14 Right Bottom (FN-T06). `origin` is always the
     /// lower-left of the text, whatever the justification.
     pub justification: u16,
+}
+
+/// EXPERIMENT H-N04: linkages MicroStation adds to text nodes, which may
+/// tell it where one line ends when the node is edited.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum NodeLinkages {
+    /// No linkages, as in round 1 and round 2.
+    #[default]
+    None,
+    /// The `0x80d4` linkage on each line, with the line-break byte set on
+    /// every line but the last.
+    LineBreaks,
+    /// Both linkages on the node header and on every line, exactly as in E4.
+    Full,
 }
 
 /// Node-wide text settings that MicroStation stores in the text node header
@@ -144,6 +174,8 @@ pub enum Geometry {
         /// Written only by the `MicroStation` profile; `Oda` writes zeros.
         style: TextNodeStyle,
         lines: Vec<(Symbology, TextData)>,
+        /// EXPERIMENT H-N04.
+        linkages: NodeLinkages,
     },
     ComplexChain(Vec<Element>),
     ComplexShape(Vec<Element>),
@@ -166,8 +198,9 @@ pub enum Geometry {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Profile {
-    #[default]
     Oda,
+    /// The default since round 2 (EXP-0004).
+    #[default]
     #[serde(rename = "microstation")]
     MicroStation,
 }
@@ -224,14 +257,16 @@ pub struct Encoded {
 impl Element {
     /// Encode this element (and its components) as page objects.
     pub fn encode(&self, ids: &mut IdAllocator, context: &EncodeContext) -> Result<Encoded> {
-        self.encode_with_role(Role::Standalone, ids, context)
+        self.encode_with_role(Role::Standalone, ids, context, &[])
     }
 
+    /// `extra_linkages` are appended after this object's own linkages.
     fn encode_with_role(
         &self,
         role: Role,
         ids: &mut IdAllocator,
         context: &EncodeContext,
+        extra_linkages: &[u8],
     ) -> Result<Encoded> {
         let (type_bits, properties) = context.header_style();
         let simple = |element_type: u8, flags: u32, primary: Vec<u8>, bounds: Bounds| {
@@ -347,6 +382,7 @@ impl Element {
                 node_number,
                 style,
                 lines,
+                linkages,
             } => {
                 if lines.is_empty() {
                     return Err(WriteError::InvalidElement(
@@ -360,7 +396,7 @@ impl Element {
                         geometry: Geometry::Text(text.clone()),
                         extra_flags: 0,
                     })
-                    .collect();
+                    .collect::<Vec<_>>();
                 let mut bounds = Bounds::of_point(*origin);
                 for child in &children {
                     bounds = bounds.union(child.bounds_for(profile)?);
@@ -388,7 +424,29 @@ impl Element {
                     role: header_role(role),
                     ..h
                 };
-                (h, p, r, Vec::new(), children)
+                // EXPERIMENT H-N04: MicroStation's text linkages.
+                let last = children.len() - 1;
+                let line_linkages = |index: usize| {
+                    let mut run = TEXT_RUN_LINKAGE.to_vec();
+                    if index != last {
+                        run[TEXT_RUN_LINE_BREAK_AT] = 0x80;
+                    }
+                    match linkages {
+                        NodeLinkages::None => Vec::new(),
+                        NodeLinkages::LineBreaks => run,
+                        NodeLinkages::Full => [run, TEXT_SCALE_LINKAGE.to_vec()].concat(),
+                    }
+                };
+                let header_linkages = match linkages {
+                    NodeLinkages::Full => [TEXT_RUN_LINKAGE, TEXT_SCALE_LINKAGE].concat(),
+                    _ => Vec::new(),
+                };
+                let components = children
+                    .into_iter()
+                    .enumerate()
+                    .map(|(index, child)| (child, line_linkages(index)))
+                    .collect();
+                (h, p, r, header_linkages, components)
             }
             Geometry::ComplexChain(children) | Geometry::ComplexShape(children) => {
                 let (element_type, what) = if matches!(self.geometry, Geometry::ComplexChain(_)) {
@@ -411,7 +469,7 @@ impl Element {
                     role: header_role(role),
                     ..h
                 };
-                (h, p, r, Vec::new(), children.clone())
+                (h, p, r, Vec::new(), without_linkages(children))
             }
             Geometry::Cell {
                 name,
@@ -458,15 +516,16 @@ impl Element {
                     role: header_role(role),
                     ..h
                 };
-                (h, p, r, linkages, children.clone())
+                (h, p, r, linkages, without_linkages(children))
             }
         };
 
         let mut header = header;
         header.element_id = ids.allocate();
+        let linkages = [linkages.as_slice(), extra_linkages].concat();
         let mut objects = vec![encode_object(&header, &primary, &linkages)?];
-        for child in &components {
-            let encoded = child.encode_with_role(Role::Component, ids, context)?;
+        for (child, child_linkages) in &components {
+            let encoded = child.encode_with_role(Role::Component, ids, context, child_linkages)?;
             objects.extend(encoded.objects);
         }
         Ok(Encoded { objects, range })
@@ -521,6 +580,13 @@ impl Element {
             }
         })
     }
+}
+
+fn without_linkages(children: &[Element]) -> Vec<(Element, Vec<u8>)> {
+    children
+        .iter()
+        .map(|child| (child.clone(), Vec::new()))
+        .collect()
 }
 
 /// Header of a complex element keeps the header role even when nested.
@@ -884,6 +950,7 @@ mod tests {
                     text("text", Point2::new(89580.4, 25926.5), 2500.0),
                 ),
             ],
+            linkages: NodeLinkages::None,
         });
         let objects = encode_one(&node);
         let header = &objects[0];
@@ -899,6 +966,61 @@ mod tests {
         assert_eq!(i64_at(header, 0x40), 24676);
         assert_eq!(i64_at(header, 0x58), 12501);
         assert_eq!(u32_at(&objects[1], 0), 0x5080_0011);
+    }
+
+    #[test]
+    fn node_linkage_experiment_mirrors_e4() {
+        // E4: every line and the node carry 0x80d4 and 0x56f3 linkages; the
+        // 0x80d4 linkage of the first line has 0x80 at byte 8 (H-N04).
+        let node = |linkages| {
+            let style = TextNodeStyle {
+                font: 1025,
+                justification: 0,
+                line_spacing: 5000.0,
+                width: 2500.0,
+                height: 2500.0,
+            };
+            let line = |y| {
+                (
+                    Symbology::default(),
+                    text("ab", Point2::new(0.0, y), 2500.0),
+                )
+            };
+            encode_one(&plain(Geometry::TextNode {
+                origin: Point2::new(0.0, 2500.0),
+                rotation: 0.0,
+                node_number: 1,
+                style,
+                lines: vec![line(0.0), line(-7500.0)],
+                linkages,
+            }))
+        };
+        let tail = |object: &Vec<u8>| object[2 * u32_at(object, 8) as usize..].to_vec();
+        let mut first_line = TEXT_RUN_LINKAGE.to_vec();
+        first_line[TEXT_RUN_LINE_BREAK_AT] = 0x80;
+
+        let full = node(NodeLinkages::Full);
+        assert_eq!(
+            tail(&full[0]),
+            [TEXT_RUN_LINKAGE, TEXT_SCALE_LINKAGE].concat()
+        );
+        assert_eq!(
+            tail(&full[1]),
+            [&first_line[..], &TEXT_SCALE_LINKAGE].concat()
+        );
+        assert_eq!(
+            tail(&full[2]),
+            [TEXT_RUN_LINKAGE, TEXT_SCALE_LINKAGE].concat()
+        );
+        assert_eq!(u32_at(&full[1], 4) as usize * 2, full[1].len());
+
+        let breaks = node(NodeLinkages::LineBreaks);
+        assert!(tail(&breaks[0]).is_empty());
+        assert_eq!(tail(&breaks[1]), first_line);
+        assert_eq!(tail(&breaks[2]), TEXT_RUN_LINKAGE);
+
+        let none = node(NodeLinkages::None);
+        assert!(none.iter().all(|object| tail(object).is_empty()));
     }
 
     #[test]

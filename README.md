@@ -5,9 +5,11 @@ record of where every piece of format knowledge comes from.
 
 **Status: prototype, not for production.** MicroStation V8i opened every
 round-1 test file (built on GDAL's sample) and showed the elements as
-written ([EXP-0002](research/EXP-0002-microstation-acceptance.md)). Files
-on the real ADTI seed are being tested now
-([EXP-0004](research/EXP-0004-adti-seed-acceptance.md)).
+written ([EXP-0002](research/EXP-0002-microstation-acceptance.md)).
+MicroStation CONNECT v10 opened every round-2 file built on the real ADTI
+seed ([EXP-0004](research/EXP-0004-adti-seed-acceptance.md)). Known gap:
+editing a text node in MicroStation merges its lines; a fix is being
+tested ([EXP-0005](research/EXP-0005-text-node-editing.md)).
 
 ## How it works
 
@@ -51,11 +53,11 @@ units (metres) and degrees. Examples: [testfiles/jobs/](testfiles/jobs/)
 (GDAL sample) and [testfiles/adti_jobs/](testfiles/adti_jobs/) (ADTI seed,
 which you supply as `private/adti_seed.dgn`).
 
-- `"profile": "microstation"` writes elements the way MicroStation itself
-  stores them in the ADTI seed; the default `"oda"` keeps the round-1
-  conventions of GDAL's ODA-written sample.
+- `"profile"`: the default `"microstation"` writes elements the way
+  MicroStation itself stores them in the ADTI seed; `"oda"` keeps the
+  round-1 conventions of GDAL's ODA-written sample.
 - `"level"` is a level ID or a level name from the seed's level table
-  (`dgnv8w inspect` lists them).
+  (`dgnv8w inspect` lists them). Levels the seed lacks are refused.
 - `"color"`, `"weight"` and `"style"` take a number or `"by_level"`.
 
 ## Licence

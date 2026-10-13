@@ -11,8 +11,8 @@ use serde::Deserialize;
 
 use crate::document::{Document, WriteOptions};
 use crate::element::{
-    Element, Geometry, Profile, Symbology, TextData, TextNodeStyle, COLOR_BY_LEVEL, FLAG_HOLE,
-    STYLE_BY_LEVEL, WEIGHT_BY_LEVEL,
+    Element, Geometry, NodeLinkages, Profile, Symbology, TextData, TextNodeStyle, COLOR_BY_LEVEL,
+    FLAG_HOLE, STYLE_BY_LEVEL, WEIGHT_BY_LEVEL,
 };
 use crate::error::{Result, WriteError};
 use crate::geom::Point2;
@@ -36,9 +36,13 @@ pub struct JobSpec {
     /// Test fixtures only: allow 2D elements in a 3D model.
     #[serde(default)]
     pub allow_3d_model: bool,
-    /// `"oda"` (default, round-1 conventions) or `"microstation"`.
+    /// `"microstation"` (default) or `"oda"` (round-1 conventions).
     #[serde(default)]
     pub profile: Profile,
+    /// Experiments only: allow level IDs that the seed's level table lacks
+    /// (FN-V02).
+    #[serde(default)]
+    pub allow_unknown_levels: bool,
     #[serde(default)]
     pub defaults: Defaults,
     pub elements: Vec<ElementSpec>,
@@ -173,6 +177,9 @@ pub enum GeometrySpec {
         line_pitch: Option<f64>,
         #[serde(default)]
         node_number: Option<u32>,
+        /// EXPERIMENT H-N04: `"none"`, `"line_breaks"` or `"full"`.
+        #[serde(default)]
+        experiment_linkages: NodeLinkages,
         #[serde(flatten)]
         style: TextStyleSpec,
     },
@@ -247,14 +254,21 @@ pub fn run_job(job_path: &Path) -> Result<(PathBuf, crate::document::SaveReport)
         .map_err(|error| WriteError::InvalidInput(format!("{}: {error}", job_path.display())))?;
     let base = job_path.parent().unwrap_or_else(|| Path::new("."));
     let mut document = Document::from_seed_path(base.join(&job.seed), job.model)?;
+    let mut elements = Vec::with_capacity(job.elements.len());
+    let target = Target {
+        document: &document,
+        profile: job.profile,
+        allow_unknown_levels: job.allow_unknown_levels,
+    };
     for spec in &job.elements {
-        let element = to_element(
-            &document,
-            job.profile,
+        elements.push(to_element(
+            &target,
             &job.defaults,
             spec,
             Placement::IDENTITY,
-        )?;
+        )?);
+    }
+    for element in elements {
         document.add(element);
     }
     let options = WriteOptions {
@@ -268,32 +282,58 @@ pub fn run_job(job_path: &Path) -> Result<(PathBuf, crate::document::SaveReport)
     Ok((output, report))
 }
 
-/// Level ID for `level`, looking names up in the seed (FN-V01).
-fn resolve_level(document: &Document, level: &LevelSpec) -> Result<u32> {
-    match level {
-        LevelSpec::Id(id) => Ok(*id),
-        LevelSpec::Name(name) => document.info().level_id(name).ok_or_else(|| {
-            let known: Vec<&str> = document
-                .info()
+/// The document being built and the job-wide switches.
+struct Target<'a> {
+    document: &'a Document,
+    profile: Profile,
+    allow_unknown_levels: bool,
+}
+
+impl Target<'_> {
+    /// Level ID for `level`, looking names up in the seed (FN-V01). An ID
+    /// must be in the seed's level table (FN-V02), except 0, the cell
+    /// header level (FN-C01).
+    fn resolve_level(&self, level: &LevelSpec) -> Result<u32> {
+        let info = self.document.info();
+        let known = || {
+            let names: Vec<String> = info
                 .levels
                 .iter()
-                .map(|level| level.name.as_str())
+                .map(|level| format!("{} = {}", level.name, level.id))
                 .collect();
-            WriteError::InvalidInput(format!(
-                "level {name:?} is not in the seed's level table (it has: {})",
-                known.join(", ")
-            ))
-        }),
+            names.join(", ")
+        };
+        match level {
+            LevelSpec::Id(id) => {
+                if *id == 0
+                    || self.allow_unknown_levels
+                    || info.levels.iter().any(|level| level.id == *id)
+                {
+                    Ok(*id)
+                } else {
+                    Err(WriteError::InvalidInput(format!(
+                        "level ID {id} is not in the seed's level table (it has: {})",
+                        known()
+                    )))
+                }
+            }
+            LevelSpec::Name(name) => info.level_id(name).ok_or_else(|| {
+                WriteError::InvalidInput(format!(
+                    "level {name:?} is not in the seed's level table (it has: {})",
+                    known()
+                ))
+            }),
+        }
     }
 }
 
 fn to_element(
-    document: &Document,
-    profile: Profile,
+    target: &Target,
     defaults: &Defaults,
     spec: &ElementSpec,
     placement: Placement,
 ) -> Result<Element> {
+    let (document, profile) = (target.document, target.profile);
     // Cell headers default to level 0, as in all three sample cells (FN-C01).
     let default_level = if matches!(spec.geometry, GeometrySpec::Cell { .. }) {
         LevelSpec::Id(0)
@@ -301,7 +341,7 @@ fn to_element(
         defaults.level.clone()
     };
     let symbology = Symbology {
-        level: resolve_level(document, spec.level.as_ref().unwrap_or(&default_level))?,
+        level: target.resolve_level(spec.level.as_ref().unwrap_or(&default_level))?,
         color: spec.color.unwrap_or(defaults.color).resolve(COLOR_BY_LEVEL),
         weight: spec
             .weight
@@ -386,6 +426,7 @@ fn to_element(
             line_spacing,
             line_pitch,
             node_number,
+            experiment_linkages,
             style,
         } => {
             let height = style.height.unwrap_or(defaults.text_height);
@@ -446,6 +487,7 @@ fn to_element(
                     height: distance(height),
                 },
                 lines: node_lines,
+                linkages: *experiment_linkages,
             }
         }
         GeometrySpec::ComplexChain { parts } | GeometrySpec::ComplexShape { parts } => {
@@ -454,7 +496,7 @@ fn to_element(
             let inherited = inherit(defaults, spec);
             let children = parts
                 .iter()
-                .map(|part| to_element(document, profile, &inherited, part, placement))
+                .map(|part| to_element(target, &inherited, part, placement))
                 .collect::<Result<Vec<_>>>()?;
             if matches!(spec.geometry, GeometrySpec::ComplexChain { .. }) {
                 Geometry::ComplexChain(children)
@@ -483,7 +525,7 @@ fn to_element(
             let inherited = inherit(defaults, spec);
             let children = parts
                 .iter()
-                .map(|part| to_element(document, profile, &inherited, part, inner))
+                .map(|part| to_element(target, &inherited, part, inner))
                 .collect::<Result<Vec<_>>>()?;
             let (sin_r, cos_r) = inner.rotation.sin_cos();
             Geometry::Cell {
@@ -552,14 +594,12 @@ mod tests {
             color: AttrSpec::Value(3),
             ..Defaults::default()
         };
-        to_element(
-            &document,
-            Profile::Oda,
-            &defaults,
-            &spec,
-            Placement::IDENTITY,
-        )
-        .unwrap()
+        let target = Target {
+            document: &document,
+            profile: Profile::Oda,
+            allow_unknown_levels: false,
+        };
+        to_element(&target, &defaults, &spec, Placement::IDENTITY).unwrap()
     }
 
     fn part_colors(element: &Element) -> Vec<u32> {
@@ -575,13 +615,12 @@ mod tests {
     fn build_with(profile: Profile, json: &str) -> Result<Element> {
         let document = Document::from_seed_bytes(SEED.to_vec(), None).unwrap();
         let spec: ElementSpec = serde_json::from_str(json).unwrap();
-        to_element(
-            &document,
+        let target = Target {
+            document: &document,
             profile,
-            &Defaults::default(),
-            &spec,
-            Placement::IDENTITY,
-        )
+            allow_unknown_levels: false,
+        };
+        to_element(&target, &Defaults::default(), &spec, Placement::IDENTITY)
     }
 
     #[test]
@@ -604,7 +643,13 @@ mod tests {
             Profile::Oda,
             r#"{ "type": "line", "points": [[0, 0], [1, 0]], "level": "NO_SUCH_LEVEL" }"#,
         );
-        assert!(missing.unwrap_err().to_string().contains("Default"));
+        assert!(missing.unwrap_err().to_string().contains("Default = 64"));
+        // R04b: an ID the level table lacks is refused (FN-V02).
+        let unknown = build_with(
+            Profile::Oda,
+            r#"{ "type": "line", "points": [[0, 0], [1, 0]], "level": 1 }"#,
+        );
+        assert!(unknown.is_err());
     }
 
     #[test]

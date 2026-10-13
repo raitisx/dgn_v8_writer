@@ -10,8 +10,8 @@ use std::f64::consts::{FRAC_PI_4, PI};
 use std::io::{Cursor, Read};
 
 use dgnv8_writer::element::{
-    Element, EncodeContext, Geometry, IdAllocator, Profile, Symbology, TextData, TextNodeStyle,
-    FLAG_3D, FLAG_HOLE, FLAG_NEW,
+    Element, EncodeContext, Geometry, IdAllocator, NodeLinkages, Profile, Symbology, TextData,
+    TextNodeStyle, FLAG_3D, FLAG_HOLE, FLAG_NEW,
 };
 use dgnv8_writer::page::Page;
 use dgnv8_writer::{Point2, TextEncoding};
@@ -240,6 +240,7 @@ fn text_node_42_with_text_43() {
                 justification: 0,
             },
         )],
+        linkages: NodeLinkages::None,
     });
     // The fixture node header is 0x70..0x8f zero-filled, like the Oda profile (FN-N01).
     assert_same(&[42, 43], &encode(&node, 42), &[true, true]);

@@ -109,6 +109,10 @@ they are not in this repository; Claude sends them to you directly. The
 checklist is in
 [`research/EXP-0004`](../research/EXP-0004-adti-seed-acceptance.md).
 
+Round 3 is one file, `R06_text_node_edit.dgn`, for the text node editing
+problem; its checklist is in
+[`research/EXP-0005`](../research/EXP-0005-text-node-editing.md).
+
 To rebuild them yourself: copy the empty ADTI seed (E1) to
 `private/adti_seed.dgn` in this repository, then run
 `dgnv8w build testfiles/adti_jobs/<name>.json`. The outputs land in

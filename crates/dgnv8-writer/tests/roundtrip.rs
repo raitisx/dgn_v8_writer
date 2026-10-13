@@ -4,7 +4,7 @@
 
 use std::f64::consts::FRAC_PI_2;
 
-use dgnv8_writer::element::{Geometry, Profile, Symbology, TextData, TextNodeStyle};
+use dgnv8_writer::element::{Geometry, NodeLinkages, Profile, Symbology, TextData, TextNodeStyle};
 use dgnv8_writer::{Document, Element, Point2, TextEncoding, WriteOptions};
 use ezdgn_core::{read_v8, V8ElementData, V8ScanOptions};
 
@@ -106,6 +106,7 @@ fn add_sample_elements(doc: &mut Document) {
                 (sym(64, 3), text("line one", p(120.0, 90.0))),
                 (sym(64, 3), text("line two", p(120.0, 88.5))),
             ],
+            linkages: NodeLinkages::None,
         }),
         element(Geometry::Cell {
             name: None,

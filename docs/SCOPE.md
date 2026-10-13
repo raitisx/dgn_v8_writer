@@ -25,39 +25,44 @@ imported (EXP-0003 obs. 9).
 ## Profiles
 
 Where ODA (which wrote GDAL's sample) and MicroStation store different
-bytes, the job's `profile` chooses. `oda` (default) keeps the round-1
-conventions, so the round-1 test files rebuild byte for byte.
-`microstation` follows the files MicroStation saved from the ADTI seed
+bytes, the job's `profile` chooses. `microstation` (the default since
+round 2) follows the files MicroStation saved from the ADTI seed
 (EXP-0003): type-word bit and properties word (FN-E13), page header
 (FN-P05), text range (FN-T04), text node style block (FN-N02) and cell
-header (FN-C03). Once round 2 (EXP-0004) passes, `microstation` becomes
-the default.
+header (FN-C03). `oda` keeps the round-1 conventions; the round-1 jobs set
+it, so their files rebuild byte for byte.
+
+## Target platform
+
+MicroStation CONNECT Edition (v10) with the ADTI LKS-2020 workspace. The
+tester could not set up MicroStation V8i for LKS-2020, so round 1 (V8i,
+GDAL's sample as seed) and round 2 (CONNECT, ADTI seed) used different
+products.
 
 ## Element status
 
-| Element | Type | Byte layout | MicroStation V8i SS5 (EXP-0002) |
-| --- | --- | --- | --- |
-| Line (and zero-length point) | 3 | FN-E09, golden 37, 39 | Displays as written (T01) |
-| Line string | 4 | FN-E08, golden 47 | Displays as written (T01) |
-| Shape (incl. hole flag) | 6 | FN-E08, golden 72–74 | Displays as written (T01) |
-| Curve | 11 | FN-E08, golden 57 | Displays as written (T01) |
-| Circle / ellipse | 15 | FN-E10, golden 51, 52 | Displays as written (T01) |
-| Arc | 16 | FN-E10, golden 54, 55 | Displays as written (T01) |
-| Complex chain | 12 | FN-X01, golden 61 | Recognised with components (T01, T07) |
-| Complex shape | 14 | FN-X01, golden 82 | Recognised with components (T01, T07) |
-| Text, ASCII | 17 | FN-T01–T04, golden 40, 43 | Correct; font, size, angle shown (T02) |
-| Text with Latvian letters | 17 | FN-T05 (`ff fd`), FN-T07 (`ff fe`, MicroStation's own form, the default) | `ff fd` correct (T04); `ff fe` in round 2 |
-| Text justification | 17 | FN-T03, FN-T06 | Codes 0, 1, 2, 7, 12, 14 confirmed (T02, T08). Text drawn at stored lower-left origin |
-| Line style and weight | all | FN-E11 | Confirmed on lines and text (T07, T08) |
-| Text node | 7 | FN-N01; style block FN-N02 (`microstation`) | Both lines display (T02); style block in round 2 |
-| Cell, unnamed | 2 | FN-C01; FN-C03 (`microstation`) | Origin, scale, angle, element count correct (T05) |
-| Cell, named | 2 | FN-C02, FN-C03 | Name shown (T06) |
-| ByLevel colour, weight, style | all | FN-E14 | In round 2 |
-| Shared cell | 35/34 | — | Not started |
+| Element | Type | Byte layout | Round 1: V8i SS5, GDAL seed (EXP-0002) | Round 2: CONNECT v10, ADTI seed (EXP-0004) |
+| --- | --- | --- | --- | --- |
+| Line (and zero-length point) | 3 | FN-E09, golden 37, 39 | Displays as written (T01) | As written, 0,0–10,5 (R01) |
+| Line string | 4 | FN-E08, golden 47 | Displays as written (T01) | Displays (R01) |
+| Shape (incl. hole flag) | 6 | FN-E08, golden 72–74 | Displays as written (T01) | Displays (R01) |
+| Curve | 11 | FN-E08, golden 57 | Displays as written (T01) | Displays (R01) |
+| Circle / ellipse | 15 | FN-E10, golden 51, 52 | Displays as written (T01) | Displays (R01) |
+| Arc | 16 | FN-E10, golden 54, 55 | Displays as written (T01) | Displays (R01) |
+| Complex chain | 12 | FN-X01, golden 61 | Recognised with components (T01, T07) | Displays (R01) |
+| Complex shape | 14 | FN-X01, golden 82 | Recognised with components (T01, T07) | Displays (R01) |
+| Text, ASCII | 17 | FN-T01–T04, golden 40, 43 | Correct; font, size, angle shown (T02) | Displays (R02) |
+| Text with Latvian letters | 17 | FN-T05 (`ff fd`), FN-T07 (`ff fe`, the default) | `ff fd` correct (T04) | Both forms correct (R02) |
+| Text justification | 17 | FN-T03, FN-T06 | Codes 0, 1, 2, 7, 12, 14 (T02, T08) | Node codes 0, 1, 2 named Left Top, Left Middle, Left Baseline (R02) |
+| Line style and weight | all | FN-E11 | Confirmed on lines and text (T07, T08) | Colour 3, weight 2, style 2 as written (R04) |
+| ByLevel colour, weight, style | all | FN-E14 | — | Shown as ByLevel (R04) |
+| Level by name | all | FN-V01, FN-V02 | — | "Default" by name (R01); unknown IDs now refused (R04b) |
+| Text node | 7 | FN-N01, FN-N02 | Both lines display (T02) | Displays; **editing merges the lines** (R02); fix tested in EXP-0005 (H-N04) |
+| Cell, unnamed | 2 | FN-C01, FN-C03 | Origin, scale, angle, element count (T05) | Displays (R03) |
+| Cell, named | 2 | FN-C02, FN-C03 | Name shown (T06) | ASCII and Latvian names, rotation, scale (R03) |
+| Shared cell | 35/34 | — | Not started | Not started |
 
-The MicroStation column covers round 1, which used GDAL's 3D sample as
-the seed. Round 2 repeats the checks on the ADTI LKS-2020 2D seed with the
-`microstation` profile (EXP-0004).
+"—" means not tested in that round.
 
 ## Not in scope
 
@@ -67,15 +72,19 @@ reading (use ezdgn).
 
 ## Open questions, in order
 
-1. Does MicroStation accept the `microstation` profile on the ADTI seed,
-   and do the untouched `Dgn~Mh` and `Dgn~Mix` fields matter (EXP-0004)?
+1. Text node editing: which linkages keep the lines apart (H-N04,
+   EXP-0005)? Until then, nodes that will be edited may need
+   `experiment_linkages`.
 2. Text node justifications 1 and 2 (H-N03); others need line lengths.
 3. How ADTI levels get into the working seed: imported by the user in
    MicroStation, or written by a later version of this tool.
-4. Coordinate axes: ADTI data lists X north; the writer's x is east
-   (EXP-0003 obs. 5, EXP-0004 R05).
+4. The font name of font 1025 in the ADTI workspace.
 5. Page size limits for large drawings (E5, not made yet).
 6. Text width as MicroStation computes it, for centred and right-justified
    placement (EXP-0003 obs. 6 gives one data point).
 7. ADTI line styles: the seed's kind-19 table has names in the ADTI code
    pattern; their use by ID is untested.
+
+Settled: x is the first coordinate as MicroStation shows it (506000 in
+R05); MicroStation accepts the `Dgn~Mh` and `Dgn~Mix` fields the writer
+leaves untouched (EXP-0004 obs. 1, 8).
