@@ -515,6 +515,31 @@ MicroStation: EXP-0004 R04b.
 Evidence: EXP-0004 obs. 7; unit test
 `spec::tests::level_names_and_by_level_resolve`.
 
+### FN-V03 Adding a level
+Status: Provisional. Observed in E4, where MicroStation added a library
+level to the file: the new type-95 entry goes into the level table in
+level-ID order (ID 1 before "Default", 64); the table header's entry count
+at 0x20 grows by one; the level gets the lowest free level ID (1, although
+it was 6 in the library), and an element ID from the file's common pool
+(1375, between the cell's and the text node's). Assumed, not observed: a
+new level can be a copy of the seed's own "Default" entry (or of its first
+level entry), with new element ID, time, level ID, name and optional
+description; its other fields (flags at 0x28, ByLevel attributes) are
+Default's. Name and description are written as MicroStation wrote them in
+E4 (`ff fe 01 00` + ASCII). The writer adds a level only when the job lists
+it under `levels` and the seed lacks it; it refuses a name that differs
+from an existing one only in letter case.
+Evidence: EXP-0003 obs. 9 (E1→E4 diff); unit test
+`level::tests::entry_copies_template_and_replaces_ids_and_names`; test
+`roundtrip::added_levels_are_in_the_level_table`; MicroStation check in
+EXP-0006 (pending).
+
+### H-V04 Non-ASCII level names
+Status: Hypothesis. A level name or description with letters outside ASCII
+is written as `ff fe` + UTF-16LE, the form MicroStation uses for text
+(FN-T07); no MicroStation-written linkage of this form has been seen.
+Evidence: none yet; tested in EXP-0006 (level `ZZ_LĪMENIS_Ā`).
+
 ## Model header (`Dgn~Mh`)
 
 ### FN-M01 Model header stream
