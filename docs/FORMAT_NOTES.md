@@ -16,16 +16,19 @@ Status values:
 - **Rejected** / **Promoted**: a hypothesis that MicroStation disproved, or
   that became an `FN-` rule. Kept so the history stays traceable.
 
-A `MicroStation:` line records what MicroStation itself showed. So far that
-is Bentley Descartes StandAlone V8i SS5 (MicroStation V8i SS5 platform), in
-[EXP-0002](../research/EXP-0002-microstation-acceptance.md). A
+A `MicroStation:` line records what MicroStation itself showed: Bentley
+Descartes StandAlone V8i SS5 (MicroStation V8i SS5 platform) for the
+round-1 files on GDAL's sample
+([EXP-0002](../research/EXP-0002-microstation-acceptance.md)), and
+MicroStation CONNECT Edition v10 for the files on the ADTI seed
+([EXP-0004](../research/EXP-0004-adti-seed-acceptance.md)). A
 `MicroStation writes:` line records bytes found in files that MicroStation
 saved from the ADTI seed
 ([EXP-0003](../research/EXP-0003-microstation-evidence-files.md), E1–E4).
 
 Where ODA (the GDAL sample) and MicroStation write different bytes, the
-writer's `profile` switch chooses: `oda` keeps the round-1 behaviour,
-`microstation` follows EXP-0003.
+writer's `profile` switch chooses: `microstation` (the default since
+EXP-0004) follows EXP-0003, `oda` keeps the round-1 behaviour.
 
 Evidence sources are described in [PROVENANCE.md](PROVENANCE.md). The main
 sample is GDAL's `test_dgnv8.dgn` (SHA-256 `8f32f87c…d1df0`), analysed in
@@ -51,7 +54,9 @@ T06), and gives a line placed afterwards ID 114, above our highest (111)
 although the `Dgn~H` counter said 93 (T01).
 MicroStation writes: in the ADTI seed (highest ID 1287) the first new
 element gets 1288 (E2).
-Evidence: EXP-0001 (ID inventory); EXP-0002; EXP-0003 obs. 2;
+CONNECT v10 gives a line placed after our IDs 1288–1302 the ID 1303
+(EXP-0004 R01).
+Evidence: EXP-0001 (ID inventory); EXP-0002; EXP-0003 obs. 2; EXP-0004 obs. 2;
 test `roundtrip::appended_elements_read_back_with_ezdgn`.
 
 ## Pages
@@ -66,14 +71,16 @@ extended (T00–T07).
 Evidence: ezdgn @e7d72db; EXP-0001; unit tests in `page.rs`; EXP-0002.
 
 ### FN-P05 Page header as MicroStation writes it
-Status: Provisional. Every page MicroStation saved has page number 0 and
+Status: Confirmed. Every page MicroStation saved has page number 0 and
 population 0, with the true record count, in format versions 2 and 3. The
 seed's empty graphic page had page number 1. The `microstation` profile
 writes page number 0 and population 0; `oda` raises the population with
 the count (FN-P01).
 MicroStation writes: (1, 3, 0, 0), (2, 3, 0, 0), (17, 3, 0, 0) for the
 graphic page of E2, E3, E4.
-Evidence: EXP-0003 obs. 11. Acceptance of our pages: EXP-0004 (pending).
+MicroStation: CONNECT v10 opens every file written this way (EXP-0004
+R00–R05).
+Evidence: EXP-0003 obs. 11; EXP-0004 obs. 1.
 
 ### FN-P02 Object prefix
 Status: Provisional. Each object inside an inflated page is preceded by a
@@ -108,7 +115,7 @@ Evidence: EXP-0001; golden tests (18 objects); EXP-0002 T01, T05, T07;
 EXP-0003 obs. 8.
 
 ### FN-E13 MicroStation type-word bit
-Status: Provisional. MicroStation sets type-word bit `0x00800000` on every
+Status: Confirmed (accepted; meaning unknown). MicroStation sets type-word bit `0x00800000` on every
 element it places (standalone, complex headers, text-node lines) and
 stores 0 in the properties word (FN-E05). Library cell components carry
 `0x00c00000` and properties `0x80000000`. The GDAL sample has neither bit.
@@ -116,7 +123,9 @@ The `microstation` profile writes `0x00800000` and properties 0 on every
 object; `oda` writes neither.
 MicroStation writes: line `0x10800003`, text `0x10800011`, cell header
 `0x30800002`, text node `0x30800007`, node lines `0x50800011` (E2–E4).
-Evidence: EXP-0003 obs. 3; unit test
+MicroStation: CONNECT v10 opens the ADTI-seed files with and without
+these bits (EXP-0004 R01, R01o).
+Evidence: EXP-0003 obs. 3; EXP-0004 obs. 1; unit test
 `element::tests::microstation_profile_sets_type_bit_and_clears_properties`.
 
 ### FN-E02 Level and element ID
@@ -160,11 +169,13 @@ laid out like the weight-5 text.
 Evidence: EXP-0001; EXP-0002 T02, T07, T08.
 
 ### FN-E14 ByLevel symbology
-Status: Provisional. ByLevel is stored as line style `0x7fffffff`, weight
+Status: Confirmed. ByLevel is stored as line style `0x7fffffff`, weight
 `0xffffffff` and colour `0xffffffff`. Jobs write these with `"by_level"`.
 MicroStation writes: these values on a line placed with ByLevel symbology
 (E2).
-Evidence: EXP-0003 obs. 4; unit test
+MicroStation: shows ByLevel for colour, weight and line style written so
+(EXP-0004 R04).
+Evidence: EXP-0003 obs. 4; EXP-0004 obs. 3; unit test
 `spec::tests::level_names_and_by_level_resolve`.
 
 ### FN-E05 Properties word
@@ -271,7 +282,10 @@ bottom, 6 centre top, 7 centre centre, 8 centre bottom, 9–11 right margin
 top/centre/bottom, 12 right top, 13 right centre, 14 right bottom.
 MicroStation: 0 "Left Top" (T02); 1 "Left Center", 2 "Left Bottom",
 7 "Center Center", 12 "Right Top", 14 "Right Bottom" (T08).
-Evidence: EXP-0002 T02, T08; V7 table per GDAL's MIT-licensed V7 `dgnlib`.
+MicroStation CONNECT v10 names the text node codes 0, 1, 2 "Left Top",
+"Left Middle" and "Left Baseline" (EXP-0004 R02).
+Evidence: EXP-0002 T02, T08; EXP-0004 obs. 4; V7 table per GDAL's
+MIT-licensed V7 `dgnlib`.
 
 ### H-T05 Justification codes
 Status: Promoted to FN-T06.
@@ -298,15 +312,16 @@ MicroStation: shows `Rīga ĀČĒĢĪĶĻŅŠŪŽ āčēģīķļņšūž` correc
 Evidence: EXP-0002 T04.
 
 ### FN-T07 Unicode text as MicroStation writes it
-Status: Provisional. MicroStation stores non-ASCII text as `ff fe` +
+Status: Confirmed. MicroStation stores non-ASCII text as `ff fe` +
 UTF-16LE, without terminator; the length at 0x6e counts the marker. The
 writer's default for non-ASCII text (encoding `auto`, or `unicode`).
 `ff fe 01 00` stays the 8-bit form (FN-T02): readers must test for it
 first.
 MicroStation writes: a 30-character Latvian text as 62 bytes `ff fe 47 00
 6c 00 01 01 7e 01 …` (E3); ASCII node lines as `ff fe 01 00` + bytes (E4).
-Evidence: EXP-0003 obs. 6, 7; unit tests `text::tests`. Acceptance of our
-bytes: EXP-0004 (pending).
+MicroStation: CONNECT v10 shows our `ff fe` Latvian text correctly, and
+the `ff fd` form too (EXP-0004 R02).
+Evidence: EXP-0003 obs. 6, 7; EXP-0004 obs. 4; unit tests `text::tests`.
 
 ### H-T03 Latvian text as escaped Windows-1257
 Status: Rejected. `ff fe 01 00` + Windows-1257 bytes. MicroStation shows the
@@ -328,7 +343,7 @@ MicroStation: displays both lines of the node (T02).
 Evidence: golden test 42/43; EXP-0002 T02.
 
 ### FN-N02 Text node style block
-Status: Provisional. 0x70 u32 font, 0x74 u16 255, 0x76 u16 justification,
+Status: Confirmed for display and justification; editing is H-N04. 0x70 u32 font, 0x74 u16 255, 0x76 u16 justification,
 0x78 f64 line spacing in UOR (the gap: baselines are height + spacing
 apart), 0x80 and 0x88 f64 width and height multipliers (FN-T01). The node
 origin is the node's justification point: for justification 0 (left top)
@@ -337,7 +352,10 @@ here, and so does the `oda` profile (MicroStation displays such nodes,
 T02); the `microstation` profile writes the block.
 MicroStation writes: font 1025, 255, 0, spacing 5000 UOR, multipliers of a
 0.25 m text, origin 0.25 m above the first baseline (E4).
-Evidence: EXP-0003 obs. 7; unit tests
+MicroStation: CONNECT v10 displays nodes written this way and reports
+the justification written at 0x76 (EXP-0004 R02). Editing such a node
+merged its lines (H-N04).
+Evidence: EXP-0003 obs. 7; EXP-0004 obs. 4, 5; unit tests
 `element::tests::microstation_text_node_writes_style_block`,
 `spec::tests::microstation_text_node_origin_is_its_justification_point`.
 
@@ -350,7 +368,20 @@ Status: Hypothesis. For justification 1 the node origin is the middle of
 the left edge of the node box, for 2 the first character of the last
 baseline (box: n × height + (n − 1) × spacing). Other justifications need
 line lengths and are refused for now.
-Evidence: none yet; tested in EXP-0004.
+MicroStation: names codes 1 and 2 "Left Middle" and "Left Baseline"
+(EXP-0004 R02); the stored origins were not read yet.
+Evidence: EXP-0004 obs. 4 (names only); origins in EXP-0005.
+
+### H-N04 Text linkages keep node lines apart
+Status: Hypothesis. MicroStation puts two 24-byte linkages on every text
+and text node: `0x80d4` (byte 8 = `0x80` on node lines followed by a line
+break, else 0; bytes 12–13 = 1257) and `0x56f3` (f64 1.0 at byte 8).
+Without them, editing our node merged its lines. The job switch
+`experiment_linkages` writes `line_breaks` (`0x80d4` on lines only) or
+`full` (both, on node and lines, exactly as E4); the default writes none.
+Evidence: EXP-0003 obs. 7 (bytes); EXP-0004 obs. 5 (the failure); unit
+test `element::tests::node_linkage_experiment_mirrors_e4`; tested in
+EXP-0005.
 
 ## Complex chain and complex shape
 
@@ -378,7 +409,7 @@ MicroStation reports "Origin 60,50" and "70,50", "Angle 0°", "Scale 1",
 Evidence: golden test 72; EXP-0002 T05, T06; EXP-0003 obs. 8.
 
 ### FN-C03 Cell header as MicroStation writes it
-Status: Provisional. The count at 0x68 is the number of all descendants,
+Status: Confirmed. The count at 0x68 is the number of all descendants,
 nested ones included. 0x6c holds `01 00 01 00`. The range at 0x70/0x80 is
 in cell coordinates: relative to the origin, before the matrix. An ASCII
 name is stored as plain bytes in the string linkage (FN-L03). The
@@ -388,7 +419,10 @@ the model box back, which can be larger than the exact box.
 MicroStation writes: count 11 for 6 direct components, one of them a
 complex shape with 5 parts, range (−0.4061, 0) to (0.4061, 1.5) m around origin
 (4.6722, 2.3994) m, 6-byte name in a 24-byte linkage (E4).
-Evidence: EXP-0003 obs. 8; unit tests
+MicroStation: CONNECT v10 shows the names ADTI_TEST, ADTI_ROT and
+ŠŪNA_Ā, and origin 5,40, angle 30° and scale 2 for the rotated cell
+(EXP-0004 R03).
+Evidence: EXP-0003 obs. 8; EXP-0004 obs. 6; unit tests
 `element::tests::microstation_cell_stores_local_range_and_ascii_name`,
 `element::tests::cell_local_range_undoes_rotation_and_scale`.
 
@@ -432,7 +466,7 @@ Evidence: EXP-0003 obs. 6–9; unit test
 ## Level table
 
 ### FN-V01 Level table
-Status: Provisional. Root `Dgn^Nm` pages hold tables: a type-96 header
+Status: Confirmed for lookup by name. Root `Dgn^Nm` pages hold tables: a type-96 header
 followed by type-95 entries. Table objects store their table kind at
 0x0c, where graphic elements store the level; kind 1 is levels. A level
 entry has its level ID at 0x20, its name in string-linkage property 1 and
@@ -443,8 +477,20 @@ levels.
 MicroStation writes: E1 has only "Default" (ID 64); E4 adds the placed
 cell's level as ID 1, plus a 60-entry library table. The GDAL sample has
 the same layout with "Default" (ID 64).
-Evidence: EXP-0003 obs. 9; unit test
+MicroStation: elements written with the level named "Default" show on
+level Default (EXP-0004 R01).
+Evidence: EXP-0003 obs. 9; EXP-0004 obs. 3; unit test
 `seed::tests::reads_the_level_table_of_the_sample`.
+
+### FN-V02 Level IDs must exist in the seed
+Status: Provisional. An element on a level ID that the seed's level table
+lacks opens without a message, but MicroStation shows no level for it
+("nothing, just blank"), and creates no level. The writer refuses such IDs
+unless the job sets `allow_unknown_levels`; level 0, used by cell headers
+(FN-C01), is always allowed.
+MicroStation: EXP-0004 R04b.
+Evidence: EXP-0004 obs. 7; unit test
+`spec::tests::level_names_and_by_level_resolve`.
 
 ## Model header (`Dgn~Mh`)
 

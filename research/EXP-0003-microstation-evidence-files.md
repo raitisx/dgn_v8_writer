@@ -4,7 +4,7 @@
 | --- | --- |
 | Date | 2026-10-13 (files E2–E4); analysis 2026-10-13 |
 | Performed by | raitisx (licensed MicroStation seat); analysis by Claude with `research/tools/v8dump.py` |
-| MicroStation product and version | SummaryInformation names "MicroStation v10.11.0.36" as the saving application of E2–E4, and "MicroStation PowerDraft v10.16.2.253" for E1. The seat's Help > About is still to be noted. |
+| MicroStation product and version | MicroStation CONNECT Edition (v10), as the tester confirmed; SummaryInformation names "MicroStation v10.11.0.36" as the saving application of E2–E4, and "MicroStation PowerDraft v10.16.2.253" for E1 |
 | Seed used | VZD LKS-2020 ADTI seed (2D). E1 is that seed with nothing drawn; SummaryInformation dates its last save 2026-09-28. |
 | Storage | Not in this repository: the files contain VZD seed content. Only hashes and observations are recorded here. |
 | Status | Done (E1–E4; E5 not made) |
@@ -62,11 +62,9 @@ FORMAT_NOTES.
    style `0x7fffffff`, weight `0xffffffff` and colour `0xffffffff`
    (FN-E14). The cell components store line style `0xffffffff` (meaning
    not checked).
-5. **The line went elsewhere (E2).** It runs from (0, 0) to (0, 10.5) m,
-   not to (10, 5). Likely cause: the coordinates were typed with a decimal
-   comma (`10,5` read as 10.5) in an auxiliary coordinate system whose X
-   axis points north, as in LKS-92 conventions. To be confirmed by the
-   user; it does not affect the format rules.
+5. **The line (E2)** runs from (0, 0) to (0, 10.5) m, not to (10, 5) as
+   the protocol said: the tester typed `xy=0,10.50` (confirmed in
+   EXP-0004). No coordinate system question.
 6. **Text (E3).** Font 1025, height and width 0.25 m (multipliers
    416666.67), justification 0. The Latvian text is stored as `ff fe` +
    UTF-16LE without `01 00` and without terminator, 30 characters in 62

@@ -2,13 +2,13 @@
 
 | Field | Value |
 | --- | --- |
-| Date | _pending_ |
+| Date | 2026-10-13 – 2026-10-14 |
 | Performed by | raitisx (licensed MicroStation seat) |
-| Product | _Help > About of the seat used_ |
+| Product | MicroStation CONNECT Edition (v10). MicroStation V8i could not be set up for LKS-2020 on this seat, so V8i was not used in this round. |
 | Seed | The empty ADTI LKS-2020 seed, E1 of EXP-0003 (SHA-256 `431af1fd…a757c8`) |
 | Files tested | Built with `testfiles/adti_jobs/*.json` at the commit that adds those jobs; hashes below |
 | Storage | The files contain VZD seed content and are not in this repository. Anyone with the same seed rebuilds them byte for byte: copy the seed to `private/adti_seed.dgn` (gitignored) and run `dgnv8w build testfiles/adti_jobs/<name>.json`. |
-| Status | Pending |
+| Status | Done. One failure: editing a text node merges its lines (obs. 5), followed up in EXP-0005 |
 | Decides | FN-P05, FN-E13, FN-E14, FN-T04, FN-T07, FN-N02, H-N03, FN-C03, FN-V01 on the ADTI seed; whether the untouched `Dgn~Mh` and `Dgn~Mix` fields matter (EXP-0003 obs. 12) |
 
 All files except R01o use the `microstation` profile. Coordinates are in
@@ -72,4 +72,47 @@ Also useful:
 
 ## Results
 
-_pending_
+| File | Opens? | Result |
+| --- | --- | --- |
+| R00 | Yes | No messages |
+| R01 | Yes | All ten elements as in the preview; line from 0,0 to 10,5; new line placed afterwards got ID 1303 (obs. 1, 2) |
+| R01o | Yes | Same as R01 |
+| R02 | Yes | Both Latvian lines readable; node justifications shown as Left Top, Left Middle, Left Baseline; **editing a node merges its two lines into one** (obs. 4, 5) |
+| R03 | Yes | Names ADTI_TEST, ADTI_ROT, (blank), ŠŪNA_Ā; ADTI_ROT origin 5,40, angle 30°, scale 2 (obs. 6) |
+| R04 | Yes | ByLevel shown as written (obs. 3) |
+| R04b | Yes | For the line on level ID 1 the tester reports "nothing, just blank" (obs. 7) |
+| R05 | Yes | A key point of the text reads 506000.000, 311998.000 in the status bar (obs. 8) |
+
+## Observations
+
+1. **All files open** in MicroStation CONNECT v10 without messages, with
+   the `microstation` profile (R00–R05) and with the `oda` profile (R01o).
+   So MicroStation accepts on the ADTI seed: our page headers (FN-P05),
+   the type-word bit and properties word (FN-E13), our text ranges
+   (FN-T04), and the untouched `Dgn~Mh` u32 and `Dgn~Mix` entry (EXP-0003
+   obs. 12).
+2. **IDs.** We wrote 1288–1302; a line placed afterwards got 1303, the
+   highest ID plus one (FN-S02).
+3. **ByLevel** colour, weight and line style show as ByLevel, and explicit
+   values as written (FN-E14). Elements named with level "Default" in the
+   job are on level Default (FN-V01).
+4. **Text.** The `ff fe` form (FN-T07) and the `ff fd` form (FN-T05) both
+   display Latvian letters correctly. The tester did not know which font
+   name to report for font 1025; still open. Text node justification codes
+   0, 1 and 2 are shown as Left Top, Left Middle and Left Baseline. V8i
+   called codes 1 and 2 of a text Left Center and Left Bottom (EXP-0002
+   T08). Node origins were not read, so H-N03 stays open.
+5. **Editing a text node merges its lines.** After editing a text node and
+   saving, its two lines became one. MicroStation's own nodes carry a
+   `0x80d4` linkage on each line, with `0x80` at byte 8 on every line but
+   the last (EXP-0003 E4); ours carry none. Hypothesis H-N04, tested in
+   EXP-0005.
+6. **Cells.** Names (ASCII and the non-ASCII `ff fd` form), origin, angle
+   and scale display as written (FN-C02, FN-C03).
+7. **Unknown level.** For the line on level ID 1, which the seed's level
+   table lacks, the tester saw "nothing, just blank": no message and no
+   level shown. The writer now refuses level IDs that are not in the seed's
+   level table (FN-V02); R04b sets `allow_unknown_levels` to rebuild.
+8. **Coordinates.** MicroStation shows the text origin of R05 as 506000.000,
+   311998.000: x is the first coordinate, as written. EXP-0003 obs. 5 is
+   explained too: the line in E2 was typed as `xy=0,10.50`.
