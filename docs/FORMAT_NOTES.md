@@ -18,7 +18,14 @@ Status values:
 
 A `MicroStation:` line records what MicroStation itself showed. So far that
 is Bentley Descartes StandAlone V8i SS5 (MicroStation V8i SS5 platform), in
-[EXP-0002](../research/EXP-0002-microstation-acceptance.md).
+[EXP-0002](../research/EXP-0002-microstation-acceptance.md). A
+`MicroStation writes:` line records bytes found in files that MicroStation
+saved from the ADTI seed
+([EXP-0003](../research/EXP-0003-microstation-evidence-files.md), E1–E4).
+
+Where ODA (the GDAL sample) and MicroStation write different bytes, the
+writer's `profile` switch chooses: `oda` keeps the round-1 behaviour,
+`microstation` follows EXP-0003.
 
 Evidence sources are described in [PROVENANCE.md](PROVENANCE.md). The main
 sample is GDAL's `test_dgnv8.dgn` (SHA-256 `8f32f87c…d1df0`), analysed in
@@ -42,7 +49,9 @@ object, carries a u64 element ID at 0x10. IDs 1–95 are used across `Dgn^Nm`,
 MicroStation: shows Element ID 96 for the first appended element (T02, T05,
 T06), and gives a line placed afterwards ID 114, above our highest (111)
 although the `Dgn~H` counter said 93 (T01).
-Evidence: EXP-0001 (ID inventory); EXP-0002;
+MicroStation writes: in the ADTI seed (highest ID 1287) the first new
+element gets 1288 (E2).
+Evidence: EXP-0001 (ID inventory); EXP-0002; EXP-0003 obs. 2;
 test `roundtrip::appended_elements_read_back_with_ezdgn`.
 
 ## Pages
@@ -55,6 +64,16 @@ sample (ezdgn also saw 3). Count and population are equal in every sample.
 MicroStation: opens files whose graphic page this code recompressed and
 extended (T00–T07).
 Evidence: ezdgn @e7d72db; EXP-0001; unit tests in `page.rs`; EXP-0002.
+
+### FN-P05 Page header as MicroStation writes it
+Status: Provisional. Every page MicroStation saved has page number 0 and
+population 0, with the true record count, in format versions 2 and 3. The
+seed's empty graphic page had page number 1. The `microstation` profile
+writes page number 0 and population 0; `oda` raises the population with
+the count (FN-P01).
+MicroStation writes: (1, 3, 0, 0), (2, 3, 0, 0), (17, 3, 0, 0) for the
+graphic page of E2, E3, E4.
+Evidence: EXP-0003 obs. 11. Acceptance of our pages: EXP-0004 (pending).
 
 ### FN-P02 Object prefix
 Status: Provisional. Each object inside an inflated page is preceded by a
@@ -83,7 +102,22 @@ Evidence: ezdgn @e7d72db; EXP-0001; EXP-0002.
 ### FN-E01 Type word and role
 Status: Confirmed. Low byte = element type. Top byte = role: `0x10`
 standalone, `0x30` complex header, `0x50` complex component.
-Evidence: EXP-0001; golden tests (18 objects); EXP-0002 T01, T05, T07.
+MicroStation writes: `0x70` for a complex shape nested in a cell (E4); the
+writer does not nest complex elements in cells yet.
+Evidence: EXP-0001; golden tests (18 objects); EXP-0002 T01, T05, T07;
+EXP-0003 obs. 8.
+
+### FN-E13 MicroStation type-word bit
+Status: Provisional. MicroStation sets type-word bit `0x00800000` on every
+element it places (standalone, complex headers, text-node lines) and
+stores 0 in the properties word (FN-E05). Library cell components carry
+`0x00c00000` and properties `0x80000000`. The GDAL sample has neither bit.
+The `microstation` profile writes `0x00800000` and properties 0 on every
+object; `oda` writes neither.
+MicroStation writes: line `0x10800003`, text `0x10800011`, cell header
+`0x30800002`, text node `0x30800007`, node lines `0x50800011` (E2–E4).
+Evidence: EXP-0003 obs. 3; unit test
+`element::tests::microstation_profile_sets_type_bit_and_clears_properties`.
 
 ### FN-E02 Level and element ID
 Status: Confirmed. 0x0c u32 level ID (64 is the default level in the sample);
@@ -125,10 +159,21 @@ text in T02 written with weight 1 showed Weight 0, although its bytes are
 laid out like the weight-5 text.
 Evidence: EXP-0001; EXP-0002 T02, T07, T08.
 
+### FN-E14 ByLevel symbology
+Status: Provisional. ByLevel is stored as line style `0x7fffffff`, weight
+`0xffffffff` and colour `0xffffffff`. Jobs write these with `"by_level"`.
+MicroStation writes: these values on a line placed with ByLevel symbology
+(E2).
+Evidence: EXP-0003 obs. 4; unit test
+`spec::tests::level_names_and_by_level_resolve`.
+
 ### FN-E05 Properties word
-Status: Provisional. 0x24 u32 is `0x80000000` on every graphical object.
-Meaning unknown; the writer copies it, and MicroStation accepts it.
-Evidence: EXP-0001; EXP-0002.
+Status: Provisional. 0x24 u32 is `0x80000000` on every graphical object of
+the GDAL sample. Meaning unknown; the `oda` profile copies it, and
+MicroStation accepts it.
+MicroStation writes: 0 on elements it places; `0x80000000` only on library
+cell components (FN-E13).
+Evidence: EXP-0001; EXP-0002; EXP-0003 obs. 3.
 
 ### FN-E06 Flags word
 Status: Confirmed for the bits below. 0x28 u32:
@@ -204,6 +249,9 @@ EXP-0002 T00, T02.
 Status: Confirmed for font 1024 and the justification codes in FN-T06. 0x68 u32
 font number; 0x6c u16 justification; 0x80–0x8f zero; 0x90 rotation (rad);
 0x98 origin.
+MicroStation writes: at 0x80 the text's length in UOR as it measured it,
+at 0x88 its height in UOR (E3, E4); the writer keeps zeros, which
+MicroStation accepts (T02).
 MicroStation: font 1024 shows as "Arial" in the GDAL sample's font table.
 The stored origin is the lower-left of the text, and MicroStation draws the
 text there whatever the justification (T08: J1–J14 all start at their
@@ -213,7 +261,7 @@ origin + (0, height) (T02: 20,50 → 20,51); code 7 "Center Center" gives
 origin + (width/2, height/2) with MicroStation's own width from the font
 (T08: "J7" at 30,15 → 30.7062,15.5). Rotation 30° displays as written.
 Font 127 draws lowercase as capitals in this MicroStation setup.
-Evidence: golden tests 40, 43; EXP-0002 T02, T08.
+Evidence: golden tests 40, 43; EXP-0002 T02, T08; EXP-0003 obs. 6.
 
 ### FN-T06 Justification codes
 Status: Confirmed for codes 0, 1, 2, 7, 12 and 14; the other codes are
@@ -231,16 +279,34 @@ Evidence: EXP-0002 T08.
 
 ### FN-T04 Text range depends on font metrics
 Status: Confirmed. Text 43 (`z`, 10000 UOR) stores a 6693 × 9922 range, a
-glyph box. The writer cannot compute this and stores a conservative box:
-`n × width` long, from −0.25 × height to height. MicroStation accepts it.
-Evidence: EXP-0001 (objects 40, 43); EXP-0002 T02.
+glyph box. The writer cannot compute glyph boxes and stores `n × width`
+along the baseline. Vertically, `oda` stores −0.25 × height to height,
+which MicroStation accepts (T02); `microstation` stores −0.5 × height to
+1.5 × height, as MicroStation does.
+MicroStation writes: low x = origin x, low y = origin y − 0.5 × height,
+extent y = 2 × height + 1 after rounding (E3, E4); the length is about
+0.645 × height per character for its font 1025.
+Evidence: EXP-0001 (objects 40, 43); EXP-0002 T02; EXP-0003 obs. 6, 7;
+unit test `element::tests::microstation_text_range_spans_half_height_below_to_one_and_a_half_above`.
 
 ### FN-T05 Unicode text
 Status: Confirmed. A text payload of `ff fd` + UTF-16LE (the string-linkage
-form, FN-L02), without terminator. The writer's default for non-ASCII text.
+form, FN-L02), without terminator. Encoding `utf16`; no longer the default
+(FN-T07).
 MicroStation: shows `Rīga ĀČĒĢĪĶĻŅŠŪŽ āčēģīķļņšūž` correctly in Arial
 (T04).
 Evidence: EXP-0002 T04.
+
+### FN-T07 Unicode text as MicroStation writes it
+Status: Provisional. MicroStation stores non-ASCII text as `ff fe` +
+UTF-16LE, without terminator; the length at 0x6e counts the marker. The
+writer's default for non-ASCII text (encoding `auto`, or `unicode`).
+`ff fe 01 00` stays the 8-bit form (FN-T02): readers must test for it
+first.
+MicroStation writes: a 30-character Latvian text as 62 bytes `ff fe 47 00
+6c 00 01 01 7e 01 …` (E3); ASCII node lines as `ff fe 01 00` + bytes (E4).
+Evidence: EXP-0003 obs. 6, 7; unit tests `text::tests`. Acceptance of our
+bytes: EXP-0004 (pending).
 
 ### H-T03 Latvian text as escaped Windows-1257
 Status: Rejected. `ff fe 01 00` + Windows-1257 bytes. MicroStation shows the
@@ -261,12 +327,30 @@ components.
 MicroStation: displays both lines of the node (T02).
 Evidence: golden test 42/43; EXP-0002 T02.
 
+### FN-N02 Text node style block
+Status: Provisional. 0x70 u32 font, 0x74 u16 255, 0x76 u16 justification,
+0x78 f64 line spacing in UOR (the gap: baselines are height + spacing
+apart), 0x80 and 0x88 f64 width and height multipliers (FN-T01). The node
+origin is the node's justification point: for justification 0 (left top)
+one text height above the first baseline. The GDAL sample stores zeros
+here, and so does the `oda` profile (MicroStation displays such nodes,
+T02); the `microstation` profile writes the block.
+MicroStation writes: font 1025, 255, 0, spacing 5000 UOR, multipliers of a
+0.25 m text, origin 0.25 m above the first baseline (E4).
+Evidence: EXP-0003 obs. 7; unit tests
+`element::tests::microstation_text_node_writes_style_block`,
+`spec::tests::microstation_text_node_origin_is_its_justification_point`.
+
 ### H-N01 Text node style block
-Status: Hypothesis. 0x70–0x8f (32 bytes) are zero in the sample. They
-probably hold font, justification, line spacing and size. The writer writes
-zeros, as the sample does; MicroStation displays such nodes (T02).
-Evidence: EXP-0002 T02 (acceptance only; the meaning needs a MicroStation
-text node, EXP-0003).
+Status: Promoted to FN-N02.
+Evidence: EXP-0003 obs. 7.
+
+### H-N03 Text node origin for left-centre and left-bottom
+Status: Hypothesis. For justification 1 the node origin is the middle of
+the left edge of the node box, for 2 the first character of the last
+baseline (box: n × height + (n − 1) × spacing). Other justifications need
+line lengths and are refused for now.
+Evidence: none yet; tested in EXP-0004.
 
 ## Complex chain and complex shape
 
@@ -283,12 +367,30 @@ Evidence: golden tests 61, 82; EXP-0002 T01, T07.
 Status: Confirmed. Type 2 (2D, 0xc0 bytes): u32 component count at 0x68,
 u32 = 1 at 0x6c, range low (x, y) at 0x70, range high (x, y) at 0x80, 2×2
 matrix at 0x90, origin (x, y) at 0xb0. Components are stored in model
-coordinates. Header on level 0, as in both samples.
+coordinates. Header on level 0, as in all three samples. The `oda` profile
+writes the 0x70 range in model coordinates, as round 1 did; the GDAL cell's
+origin is 0,0, so it cannot tell model from cell coordinates, and
+MicroStation's own cells use cell coordinates (FN-C03).
 MicroStation: T05 and T06 store range low (59, 49) and (69, 49) at 0x70;
 MicroStation reports "Origin 60,50" and "70,50", "Angle 0°", "Scale 1",
 "Number of elements 3" and "2", "Cell Type Graphic". So 0xb0 is the origin.
 **Differs from ezdgn**, which reads 0x70 as the origin.
-Evidence: golden test 72; EXP-0002 T05, T06.
+Evidence: golden test 72; EXP-0002 T05, T06; EXP-0003 obs. 8.
+
+### FN-C03 Cell header as MicroStation writes it
+Status: Provisional. The count at 0x68 is the number of all descendants,
+nested ones included. 0x6c holds `01 00 01 00`. The range at 0x70/0x80 is
+in cell coordinates: relative to the origin, before the matrix. An ASCII
+name is stored as plain bytes in the string linkage (FN-L03). The
+`microstation` profile writes all of this; a non-ASCII name stays
+`ff fd` + UTF-16LE (FN-C02). With a rotated or scaled cell the writer maps
+the model box back, which can be larger than the exact box.
+MicroStation writes: count 11 for 6 direct components, one of them a
+complex shape with 5 parts, range (−0.4061, 0) to (0.4061, 1.5) m around origin
+(4.6722, 2.3994) m, 6-byte name in a 24-byte linkage (E4).
+Evidence: EXP-0003 obs. 8; unit tests
+`element::tests::microstation_cell_stores_local_range_and_ascii_name`,
+`element::tests::cell_local_range_undoes_rotation_and_scale`.
 
 ### FN-C02 Cell name
 Status: Confirmed. The name is a string linkage (FN-L02) with property ID 1,
@@ -316,6 +418,34 @@ property IDs 1 and 2; unit labels use 0x13 and 0x14.
 Evidence: EXP-0001; unit test `element::tests::string_linkage_matches_fixture_layout`;
 EXP-0002 T06.
 
+### FN-L03 String payload forms
+Status: Provisional. String-linkage payloads and text payloads use the same
+forms: plain 8-bit bytes, `ff fe 01 00` + 8-bit (read as Windows-1252),
+`ff fe` + UTF-16LE and `ff fd` + UTF-16LE. Linkage payloads may end in
+NUL padding. The reader decodes all four.
+MicroStation writes: plain ASCII cell names (E4), `ff fe 01 00` + ASCII
+level names copied from a library (E4), plain ASCII level names in the
+seed (E1).
+Evidence: EXP-0003 obs. 6–9; unit test
+`text::tests::decodes_every_observed_form`.
+
+## Level table
+
+### FN-V01 Level table
+Status: Provisional. Root `Dgn^Nm` pages hold tables: a type-96 header
+followed by type-95 entries. Table objects store their table kind at
+0x0c, where graphic elements store the level; kind 1 is levels. A level
+entry has its level ID at 0x20, its name in string-linkage property 1 and
+its description in property 2. Kind-1 objects with type-word bit
+`0x00800000` form a second table that MicroStation added when a library
+cell was placed; the writer treats it as a library copy, not as the file's
+levels.
+MicroStation writes: E1 has only "Default" (ID 64); E4 adds the placed
+cell's level as ID 1, plus a 60-entry library table. The GDAL sample has
+the same layout with "Default" (ID 64).
+Evidence: EXP-0003 obs. 9; unit test
+`seed::tests::reads_the_level_table_of_the_sample`.
+
 ## Model header (`Dgn~Mh`)
 
 ### FN-M01 Model header stream
@@ -325,9 +455,10 @@ MicroStation: opens files whose `Dgn~Mh` this code recompressed (T00–T07).
 Evidence: ezdgn @e7d72db; EXP-0001; EXP-0002.
 
 ### FN-M02 2D model flag
-Status: Provisional. Type-66 word bit `0x00800000` set = 2D model; clear in
-the (3D) sample.
-Evidence: ezdgn @e7d72db (public V8 files). Needs a MicroStation 2D seed.
+Status: Provisional. The ADTI 2D seed's type-66 word is `0x00400042`; the
+3D GDAL sample's is `0x00000042`. ezdgn reads bit `0x00800000` as 2D, which
+this seed does not have. The writer treats either bit as 2D.
+Evidence: EXP-0003 obs. 1; ezdgn @e7d72db (public V8 files).
 
 ### FN-M03 Global origin
 Status: Provisional. +0xc8: global origin, three f64 in UOR (zero in the

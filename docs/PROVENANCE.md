@@ -62,7 +62,10 @@ must not contribute format findings covered by them.
 | F-GDAL-V8 | `crates/dgnv8-writer/tests/data/gdal_test_dgnv8.dgn` | OSGeo/GDAL `autotest/ogr/data/dgnv8/test_dgnv8.dgn` @ `18e7cceb43a0dd58be474c9fdd5384baa3cde7c9`; GDAL MIT-style licence (`LICENSE.GDAL.txt`) | `8f32f87ce4b16881aa64f5cb9f75c98851833f96fef37ca0ad31aa6bb18d1df0` | Layout analysis (EXP-0001), golden tests, seed for test round 1 |
 | F-GDAL-CSV | `test_dgnv8_ref.csv` (not copied here) | Same GDAL commit; GDAL licence | `09f765e0aa8dc06bb1d0da4ed86f060dc0a839d480b3dc67e54841ecceec6433` | Black-box check of values only |
 | C-EZDGN | ezdgn source and `docs/v8/FORMAT_NOTES.md` | monozukuri-ai/ezdgn @ `e7d72db22c9b7f19b0404bb699706378a48d6fb0`, MIT | n/a | Read-back oracle (dev-dependency); cited rules re-observed in EXP-0001 |
-| MS-* | MicroStation evidence files E1–E5 | Made by raitisx (EXP-0003); private repository, not redistributed | _pending_ | Confirm or reject Provisional and Hypothesis rules |
+| MS-E1 | ADTI LKS-2020 seed, empty (EXP-0003 E1) | VZD seed as supplied to raitisx; not redistributed | `431af1fd0b043baaa90832bfa46dca3028796c8f6be5f4f556de2a44c7a757c8` | Seed analysis; seed of round 2 (EXP-0004) |
+| MS-E2 | E1 + one line, saved by MicroStation | Made by raitisx; not redistributed | `468a870f744fd89820d0a3988a0eb3cc9b6118da6f15af6322817c0845dc48a0` | EXP-0003 |
+| MS-E3 | E2 + one Latvian text | Made by raitisx; not redistributed | `1c29b14fdcc452ae7bc40dc0ed7d36dd8e550811d0c5e2e6137f3d0c9eba2c09` | EXP-0003 |
+| MS-E4 | E3 + one ADTI cell + one text node | Made by raitisx; not redistributed | `a3ca5ac45652c607b3489743fd2bd16248eb3237c22d8846bef6b7edb8b2b7f1` | EXP-0003 |
 
 ## Data policy
 
@@ -72,6 +75,9 @@ must not contribute format findings covered by them.
   redistributed. The writer reads them from paths the user supplies.
 - Files derived from those resources (evidence files, re-saved test files)
   go to the private evidence repository; only hashes and findings come here.
+- Jobs for the ADTI seed (`testfiles/adti_jobs/`) read the seed from
+  `private/adti_seed.dgn` and write to `private/round2/`. `.gitignore`
+  excludes `private/`, so neither the seed nor the outputs are committed.
 
 ## Admitting a new evidence file
 

@@ -1,8 +1,11 @@
 # Findings to offer upstream (ezdgn)
 
 Share these with the ezdgn maintainer only after they agree to receive them
-(open an issue first). Each finding has evidence anyone can re-run on the
-public GDAL file that ezdgn already ships.
+(open an issue first). Findings 1–6 have evidence anyone can re-run on the
+public GDAL file that ezdgn already ships. Findings 7–9 come from files
+MicroStation saved from the ADTI seed (EXP-0003); those files contain VZD
+seed content and cannot be shared, so only byte excerpts can be offered,
+or the maintainer can check with any MicroStation-saved 2D file.
 
 | # | Finding | ezdgn today | Evidence |
 | --- | --- | --- | --- |
@@ -12,6 +15,9 @@ public GDAL file that ezdgn already ships.
 | 4 | 2D cell header: 0x70 range low, 0x80 range high, 0x90 matrix, 0xb0 origin; MicroStation reports the 0xb0 point as the cell origin | 0x70 read as origin | FN-C01, EXP-0002 T05, T06 |
 | 5 | Flags word bit `0x0200` is the "New" property, not a geometry flag | not decoded | FN-E06, EXP-0002 T02, T05 |
 | 6 | Text payload `ff fd` + UTF-16LE is valid (MicroStation shows Latvian letters correctly) | decoder knows UTF-8 and Windows-1252 only | FN-T05, EXP-0002 T04 |
+| 7 | A MicroStation 2D model header has type-word bit `0x00400000` (`0x00400042`), not `0x00800000`; elements MicroStation places carry `0x00800000` in their own type word | Reports the ADTI 2D model as 3D | FN-M02, FN-E13, EXP-0003 obs. 1, 3 |
+| 8 | MicroStation writes non-ASCII text as `ff fe` + UTF-16LE; `ff fe 01 00` + 8-bit remains the 8-bit form, so it must be tested first | Shows the raw bytes | FN-T07, FN-L03, EXP-0003 obs. 6 |
+| 9 | In MicroStation's own cells the 0x70/0x80 range is relative to the cell origin (refines finding 4); the count at 0x68 includes nested components | 0x70 read as origin | FN-C03, EXP-0003 obs. 8 |
 
 Suggested first issue text:
 
