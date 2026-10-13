@@ -2,13 +2,13 @@
 
 | Field | Value |
 | --- | --- |
-| Date | _pending_ |
+| Date | 2026-10-14 |
 | Performed by | raitisx (licensed MicroStation seat) |
 | Product | MicroStation CONNECT Edition (v10), as in EXP-0004 |
 | Seed | The empty ADTI LKS-2020 seed, E1 of EXP-0003 (SHA-256 `431af1fd…a757c8`) |
 | Files tested | `R06_text_node_edit.dgn`, built with `testfiles/adti_jobs/R06_text_node_edit.json`; SHA-256 `e1aa08b3c345602f097df81727f0899bd8cad9b5cb5f7e1f3c8ee63222ca4a80` |
 | Storage | Not in this repository (contains VZD seed content); rebuild as described in EXP-0004 |
-| Status | Pending |
+| Status | Done for H-N04 (promoted to FN-N03). Not reported: node origins of D and E (H-N03), save and reopen, the single text G, the font name |
 | Decides | H-N04 (which linkages keep the lines of an edited node apart), H-N03 (node origin for justifications 1 and 2) |
 
 ## Why
@@ -53,4 +53,22 @@ All nodes: font 1025, height 0.25 m, line spacing 0.5 m, level Default.
 
 ## Results
 
-_pending_
+Tester's report: "R06: A breaks, rest not".
+
+| Node | Linkages | After editing |
+| --- | --- | --- |
+| A | none | Lines merged ("breaks"), as in EXP-0004 |
+| B | `0x80d4` with line-break byte, lines only | Lines kept |
+| C | both, as E4 | Lines kept |
+| D, E | both, justification 1 and 2 | Lines kept |
+| F | both, three Latvian lines | Lines kept |
+
+## Conclusion
+
+The `0x80d4` linkage with the line-break byte is enough to keep the lines
+of an edited node apart; `0x56f3` and the linkages on the node header are
+not needed for that. H-N04 becomes FN-N03, and the `microstation` profile
+now writes `line_breaks` on every text node unless the job says otherwise.
+This is exactly node B, so no new test file is needed. The R02 job of
+EXP-0004 now says `"linkages": "none"`, so it still rebuilds the file that
+was tested.

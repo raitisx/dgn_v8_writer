@@ -343,7 +343,7 @@ MicroStation: displays both lines of the node (T02).
 Evidence: golden test 42/43; EXP-0002 T02.
 
 ### FN-N02 Text node style block
-Status: Confirmed for display and justification; editing is H-N04. 0x70 u32 font, 0x74 u16 255, 0x76 u16 justification,
+Status: Confirmed for display and justification; editing needs FN-N03. 0x70 u32 font, 0x74 u16 255, 0x76 u16 justification,
 0x78 f64 line spacing in UOR (the gap: baselines are height + spacing
 apart), 0x80 and 0x88 f64 width and height multipliers (FN-T01). The node
 origin is the node's justification point: for justification 0 (left top)
@@ -354,7 +354,7 @@ MicroStation writes: font 1025, 255, 0, spacing 5000 UOR, multipliers of a
 0.25 m text, origin 0.25 m above the first baseline (E4).
 MicroStation: CONNECT v10 displays nodes written this way and reports
 the justification written at 0x76 (EXP-0004 R02). Editing such a node
-merged its lines (H-N04).
+merged its lines until the line-break linkage was added (FN-N03).
 Evidence: EXP-0003 obs. 7; EXP-0004 obs. 4, 5; unit tests
 `element::tests::microstation_text_node_writes_style_block`,
 `spec::tests::microstation_text_node_origin_is_its_justification_point`.
@@ -372,18 +372,27 @@ MicroStation: names codes 1 and 2 "Left Middle" and "Left Baseline"
 (EXP-0004 R02); the stored origins were not read yet.
 Evidence: EXP-0004 obs. 4 (names only); origins in EXP-0005.
 
-### H-N04 Text linkages keep node lines apart
-Status: Hypothesis. MicroStation puts two 24-byte linkages on every text
-and text node: `0x80d4` (byte 8 = `0x80` on node lines followed by a line
-break, else 0; bytes 12–13 = 1257) and `0x56f3` (f64 1.0 at byte 8).
-Without them, editing our node merged its lines. The job switch
-`experiment_linkages` writes `line_breaks` (`0x80d4` on lines only) or
-`full` (both, on node and lines, exactly as E4); the default writes none.
-Evidence: EXP-0003 obs. 7 (bytes); EXP-0004 obs. 5 (the failure); unit
-test `element::tests::node_linkage_experiment_mirrors_e4`; tested in
-EXP-0005.
+### FN-N03 Line-break linkage on text node lines
+Status: Confirmed. Each line of a text node carries a 24-byte linkage
+`0x80d4`; byte 8 is `0x80` on every line followed by a line break (all but
+the last), else 0. The other bytes are copied from MicroStation's own node
+(E4) and are not understood; bytes 12–13 read 1257. MicroStation also puts
+a second linkage, `0x56f3` (f64 1.0), on every text and node; it is not
+needed. The `microstation` profile writes the line-break linkage by
+default (`"linkages": "line_breaks"`); `"none"` and `"full"` (both
+linkages on node and lines, exactly as E4) stay available. `oda` writes
+none.
+MicroStation: CONNECT v10 merged the lines of an edited node without the
+linkage (node A, and EXP-0004 R02) and kept them apart with the
+line-break linkage alone (node B) and with both linkages (nodes C–F,
+justifications 0, 1, 2, three Latvian lines) (EXP-0005).
+Evidence: EXP-0003 obs. 7 (bytes); EXP-0004 obs. 5; EXP-0005; unit tests
+`element::tests::node_linkage_experiment_mirrors_e4`,
+`spec::tests::microstation_text_node_origin_is_its_justification_point`.
 
-## Complex chain and complex shape
+### H-N04 Text linkages keep node lines apart
+Status: Promoted to FN-N03.
+Evidence: EXP-0005.
 
 ### FN-X01 Complex chain and complex shape header
 Status: Confirmed. Types 12 and 14 (0x70 bytes): u32 component count at 0x68,
