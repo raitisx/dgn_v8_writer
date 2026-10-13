@@ -101,6 +101,19 @@ Only hashes and findings will be copied into this public repository.
 Also useful: a screenshot of the Level Manager showing the ADTI levels with
 their names and numbers.
 
+## Part 3: test round 2 on the ADTI seed
+
+Round 2 checks the writer on the real ADTI seed, with elements written the
+way MicroStation itself writes them. The files contain VZD seed content, so
+they are not in this repository; Claude sends them to you directly. The
+checklist is in
+[`research/EXP-0004`](../research/EXP-0004-adti-seed-acceptance.md).
+
+To rebuild them yourself: copy the empty ADTI seed (E1) to
+`private/adti_seed.dgn` in this repository, then run
+`dgnv8w build testfiles/adti_jobs/<name>.json`. The outputs land in
+`private/round2/`, which git ignores.
+
 ## Licence of these files
 
 The `.dgn` files here are GDAL test data (GDAL's MIT-style licence, see

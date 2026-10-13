@@ -1,0 +1,18 @@
+{ "seed": "../../private/adti_seed.dgn", "modified_ms": 1791936000000, "output": "../../private/round2/R03_cells.dgn", "profile": "microstation",
+  "defaults": { "level": "Default", "color": 3 },
+  "elements": [
+    { "type": "cell", "name": "ADTI_TEST", "origin": [0, 40], "parts": [
+        { "type": "shape", "points": [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]] },
+        { "type": "line", "points": [[-0.5, -0.5], [0.5, 0.5]] },
+        { "type": "line", "points": [[-0.5, 0.5], [0.5, -0.5]] } ] },
+    { "type": "cell", "name": "ADTI_ROT", "origin": [5, 40], "rotation_deg": 30, "scale": 2, "color": 4, "parts": [
+        { "type": "shape", "points": [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]] },
+        { "type": "line", "points": [[0, 0], [1, 0]] } ] },
+    { "type": "cell", "origin": [10, 40], "color": 5, "parts": [
+        { "type": "circle", "center": [0, 0], "radius": 0.5 },
+        { "type": "line", "points": [[-0.5, 0], [0.5, 0]] },
+        { "type": "text", "text": "C", "origin": [0.6, 0], "height": 0.4, "font": 1025 } ] },
+    { "type": "cell", "name": "ŠŪNA_Ā", "origin": [15, 40], "color": 6, "parts": [
+        { "type": "line", "points": [[-0.5, 0], [0.5, 0]] },
+        { "type": "line", "points": [[0, -0.5], [0, 0.5]] } ] }
+  ] }

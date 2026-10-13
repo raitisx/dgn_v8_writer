@@ -1,0 +1,6 @@
+{ "seed": "../../private/adti_seed.dgn", "modified_ms": 1791936000000, "output": "../../private/round2/R04b_missing_level.dgn", "profile": "microstation",
+  "defaults": { "color": 3 },
+  "elements": [
+    { "type": "line", "points": [[0, 55], [10, 55]], "level": 64 },
+    { "type": "line", "points": [[0, 56], [10, 56]], "level": 1 }
+  ] }

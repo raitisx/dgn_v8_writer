@@ -1,0 +1,19 @@
+{ "seed": "../../private/adti_seed.dgn", "modified_ms": 1791936000000, "output": "../../private/round2/R01o_geometry_oda.dgn", "profile": "oda",
+  "defaults": { "level": "Default", "weight": 1 },
+  "elements": [
+    { "type": "line", "points": [[0, 0], [10, 5]], "color": 1 },
+    { "type": "line_string", "points": [[12, 0], [15, 5], [18, 0], [21, 5]], "color": 2 },
+    { "type": "shape", "points": [[24, 0], [30, 0], [30, 5], [24, 5]], "color": 3 },
+    { "type": "curve", "points": [[0, 8], [2, 10], [4, 12], [6, 9], [8, 12], [10, 10], [12, 8]], "color": 4 },
+    { "type": "circle", "center": [17, 10], "radius": 2, "color": 5 },
+    { "type": "ellipse", "center": [26, 10], "primary": 3, "secondary": 1.5, "rotation_deg": 30, "color": 6 },
+    { "type": "arc", "center": [3, 18], "primary": 3, "start_deg": 0, "sweep_deg": 90, "color": 1 },
+    { "type": "arc", "center": [10, 18], "primary": 3, "secondary": 2, "start_deg": 180, "sweep_deg": -135, "color": 2 },
+    { "type": "complex_chain", "color": 3, "parts": [
+        { "type": "line", "points": [[16, 21], [16, 16]] },
+        { "type": "arc", "center": [18, 16], "primary": 2, "start_deg": 180, "sweep_deg": 180 },
+        { "type": "line", "points": [[20, 16], [20, 21]] } ] },
+    { "type": "complex_shape", "color": 4, "parts": [
+        { "type": "line", "points": [[24, 15], [24, 21]] },
+        { "type": "arc", "center": [24, 18], "primary": 3, "start_deg": 90, "sweep_deg": -180 } ] }
+  ] }
