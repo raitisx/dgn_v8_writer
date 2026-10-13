@@ -6,8 +6,8 @@
     { "type": "text", "text": "utf16: Rīga ĀČĒĢĪĶĻŅŠŪŽ āčēģīķļņšūž", "origin": [0, 28], "encoding": "utf16" },
     { "type": "text", "text": "Height 1 m", "origin": [0, 26], "height": 1 },
     { "type": "text", "text": "Rotated 30", "origin": [0, 23], "rotation_deg": 30, "height": 0.5, "color": 2 },
-    { "type": "text_node", "lines": ["Node J0 line 1", "Node J0 line 2"], "origin": [12, 30], "line_spacing": 0.5, "justification": 0, "color": 3 },
-    { "type": "text_node", "lines": ["Node J1 line 1", "Node J1 line 2"], "origin": [12, 27], "line_spacing": 0.5, "justification": 1, "color": 4 },
-    { "type": "text_node", "lines": ["Node J2 line 1", "Node J2 line 2"], "origin": [12, 24], "line_spacing": 0.5, "justification": 2, "color": 5 },
-    { "type": "text_node", "lines": ["Mezgls: Glāžšķūņa", "dzelzceļš", "trešā rinda"], "origin": [20, 30], "line_spacing": 0.25, "color": 6 }
+    { "type": "text_node", "linkages": "none", "lines": ["Node J0 line 1", "Node J0 line 2"], "origin": [12, 30], "line_spacing": 0.5, "justification": 0, "color": 3 },
+    { "type": "text_node", "linkages": "none", "lines": ["Node J1 line 1", "Node J1 line 2"], "origin": [12, 27], "line_spacing": 0.5, "justification": 1, "color": 4 },
+    { "type": "text_node", "linkages": "none", "lines": ["Node J2 line 1", "Node J2 line 2"], "origin": [12, 24], "line_spacing": 0.5, "justification": 2, "color": 5 },
+    { "type": "text_node", "linkages": "none", "lines": ["Mezgls: Glāžšķūņa", "dzelzceļš", "trešā rinda"], "origin": [20, 30], "line_spacing": 0.25, "color": 6 }
   ] }

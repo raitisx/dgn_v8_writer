@@ -1,11 +1,11 @@
 { "seed": "../../private/adti_seed.dgn", "modified_ms": 1792022400000, "output": "../../private/round2/R06_text_node_edit.dgn", "profile": "microstation",
   "defaults": { "level": "Default", "color": 3, "font": 1025, "text_height": 0.25 },
   "elements": [
-    { "type": "text_node", "lines": ["A none 1", "A none 2"], "origin": [0, 10], "line_spacing": 0.5, "experiment_linkages": "none" },
-    { "type": "text_node", "lines": ["B breaks 1", "B breaks 2"], "origin": [10, 10], "line_spacing": 0.5, "experiment_linkages": "line_breaks" },
-    { "type": "text_node", "lines": ["C full 1", "C full 2"], "origin": [20, 10], "line_spacing": 0.5, "experiment_linkages": "full" },
-    { "type": "text_node", "lines": ["D full J1 1", "D full J1 2"], "origin": [0, 5], "line_spacing": 0.5, "justification": 1, "experiment_linkages": "full", "color": 4 },
-    { "type": "text_node", "lines": ["E full J2 1", "E full J2 2"], "origin": [10, 5], "line_spacing": 0.5, "justification": 2, "experiment_linkages": "full", "color": 4 },
-    { "type": "text_node", "lines": ["F Glāžšķūņa", "dzelzceļš", "trešā rinda"], "origin": [20, 5], "line_spacing": 0.5, "experiment_linkages": "full", "color": 5 },
+    { "type": "text_node", "lines": ["A none 1", "A none 2"], "origin": [0, 10], "line_spacing": 0.5, "linkages": "none" },
+    { "type": "text_node", "lines": ["B breaks 1", "B breaks 2"], "origin": [10, 10], "line_spacing": 0.5, "linkages": "line_breaks" },
+    { "type": "text_node", "lines": ["C full 1", "C full 2"], "origin": [20, 10], "line_spacing": 0.5, "linkages": "full" },
+    { "type": "text_node", "lines": ["D full J1 1", "D full J1 2"], "origin": [0, 5], "line_spacing": 0.5, "justification": 1, "linkages": "full", "color": 4 },
+    { "type": "text_node", "lines": ["E full J2 1", "E full J2 2"], "origin": [10, 5], "line_spacing": 0.5, "justification": 2, "linkages": "full", "color": 4 },
+    { "type": "text_node", "lines": ["F Glāžšķūņa", "dzelzceļš", "trešā rinda"], "origin": [20, 5], "line_spacing": 0.5, "linkages": "full", "color": 5 },
     { "type": "text", "text": "G single text", "origin": [0, 0], "color": 6 }
   ] }

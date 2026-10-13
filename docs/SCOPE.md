@@ -57,7 +57,7 @@ products.
 | Line style and weight | all | FN-E11 | Confirmed on lines and text (T07, T08) | Colour 3, weight 2, style 2 as written (R04) |
 | ByLevel colour, weight, style | all | FN-E14 | — | Shown as ByLevel (R04) |
 | Level by name | all | FN-V01, FN-V02 | — | "Default" by name (R01); unknown IDs now refused (R04b) |
-| Text node | 7 | FN-N01, FN-N02 | Both lines display (T02) | Displays; **editing merges the lines** (R02); fix tested in EXP-0005 (H-N04) |
+| Text node | 7 | FN-N01, FN-N02, FN-N03 | Both lines display (T02) | Displays (R02); with the line-break linkage, lines stay apart when edited (EXP-0005) |
 | Cell, unnamed | 2 | FN-C01, FN-C03 | Origin, scale, angle, element count (T05) | Displays (R03) |
 | Cell, named | 2 | FN-C02, FN-C03 | Name shown (T06) | ASCII and Latvian names, rotation, scale (R03) |
 | Shared cell | 35/34 | — | Not started | Not started |
@@ -72,19 +72,17 @@ reading (use ezdgn).
 
 ## Open questions, in order
 
-1. Text node editing: which linkages keep the lines apart (H-N04,
-   EXP-0005)? Until then, nodes that will be edited may need
-   `experiment_linkages`.
-2. Text node justifications 1 and 2 (H-N03); others need line lengths.
-3. How ADTI levels get into the working seed: imported by the user in
+1. Text node justifications 1 and 2 (H-N03); others need line lengths.
+2. How ADTI levels get into the working seed: imported by the user in
    MicroStation, or written by a later version of this tool.
-4. The font name of font 1025 in the ADTI workspace.
-5. Page size limits for large drawings (E5, not made yet).
-6. Text width as MicroStation computes it, for centred and right-justified
+3. The font name of font 1025 in the ADTI workspace.
+4. Page size limits for large drawings (E5, not made yet).
+5. Text width as MicroStation computes it, for centred and right-justified
    placement (EXP-0003 obs. 6 gives one data point).
-7. ADTI line styles: the seed's kind-19 table has names in the ADTI code
+6. ADTI line styles: the seed's kind-19 table has names in the ADTI code
    pattern; their use by ID is untested.
 
 Settled: x is the first coordinate as MicroStation shows it (506000 in
 R05); MicroStation accepts the `Dgn~Mh` and `Dgn~Mix` fields the writer
-leaves untouched (EXP-0004 obs. 1, 8).
+leaves untouched (EXP-0004 obs. 1, 8); text node lines stay apart when
+edited with the line-break linkage (FN-N03, EXP-0005).

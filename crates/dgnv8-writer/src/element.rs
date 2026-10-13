@@ -42,17 +42,17 @@ pub const FLAG_HOLE: u32 = 0x0000_8000;
 pub const UOR_TO_TEXT_MULTIPLIER: f64 = 1000.0 / 6.0;
 /// Property/string linkage identifier (FN-L02).
 pub const STRING_LINKAGE_ID: u16 = 0x56d2;
-/// Linkage MicroStation attaches to every text and text node (H-N04), as
+/// Linkage MicroStation attaches to every text and text node (FN-N03), as
 /// written in EXP-0003 E4. Byte 8 is `0x80` on node lines that end with a
 /// line break, else 0.
 pub const TEXT_RUN_LINKAGE: [u8; 24] = [
     0x0b, 0x10, 0xd4, 0x80, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x20, 0x30, 0xe9, 0x04, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
-/// Offset of the line-break byte in [`TEXT_RUN_LINKAGE`] (H-N04).
+/// Offset of the line-break byte in [`TEXT_RUN_LINKAGE`] (FN-N03).
 pub const TEXT_RUN_LINE_BREAK_AT: usize = 8;
-/// Second linkage on every MicroStation text and text node, holding f64 1.0
-/// (H-N04).
+/// Second linkage on every MicroStation text and text node, holding f64 1.0;
+/// not needed for editing (FN-N03).
 pub const TEXT_SCALE_LINKAGE: [u8; 24] = [
     0x0b, 0x10, 0xf3, 0x56, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf0, 0x3f,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -103,19 +103,29 @@ pub struct TextData {
     pub justification: u16,
 }
 
-/// EXPERIMENT H-N04: linkages MicroStation adds to text nodes, which may
-/// tell it where one line ends when the node is edited.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Deserialize, serde::Serialize)]
+/// Linkages on text nodes. Without the line-break linkage, MicroStation
+/// merges the lines of a node when it is edited (FN-N03).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum NodeLinkages {
-    /// No linkages, as in round 1 and round 2.
-    #[default]
+    /// No linkages, as in rounds 1 and 2 (the `Oda` default).
     None,
     /// The `0x80d4` linkage on each line, with the line-break byte set on
-    /// every line but the last.
+    /// every line but the last (the `MicroStation` default).
     LineBreaks,
     /// Both linkages on the node header and on every line, exactly as in E4.
     Full,
+}
+
+impl NodeLinkages {
+    /// What each profile writes when the job does not say (FN-N03).
+    #[must_use]
+    pub const fn default_for(profile: Profile) -> Self {
+        match profile {
+            Profile::Oda => Self::None,
+            Profile::MicroStation => Self::LineBreaks,
+        }
+    }
 }
 
 /// Node-wide text settings that MicroStation stores in the text node header
@@ -174,7 +184,7 @@ pub enum Geometry {
         /// Written only by the `MicroStation` profile; `Oda` writes zeros.
         style: TextNodeStyle,
         lines: Vec<(Symbology, TextData)>,
-        /// EXPERIMENT H-N04.
+        /// FN-N03.
         linkages: NodeLinkages,
     },
     ComplexChain(Vec<Element>),
@@ -424,7 +434,7 @@ impl Element {
                     role: header_role(role),
                     ..h
                 };
-                // EXPERIMENT H-N04: MicroStation's text linkages.
+                // FN-N03: MicroStation's text linkages.
                 let last = children.len() - 1;
                 let line_linkages = |index: usize| {
                     let mut run = TEXT_RUN_LINKAGE.to_vec();
@@ -971,7 +981,7 @@ mod tests {
     #[test]
     fn node_linkage_experiment_mirrors_e4() {
         // E4: every line and the node carry 0x80d4 and 0x56f3 linkages; the
-        // 0x80d4 linkage of the first line has 0x80 at byte 8 (H-N04).
+        // 0x80d4 linkage of the first line has 0x80 at byte 8 (FN-N03).
         let node = |linkages| {
             let style = TextNodeStyle {
                 font: 1025,

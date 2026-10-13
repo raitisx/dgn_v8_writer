@@ -7,9 +7,9 @@ record of where every piece of format knowledge comes from.
 round-1 test file (built on GDAL's sample) and showed the elements as
 written ([EXP-0002](research/EXP-0002-microstation-acceptance.md)).
 MicroStation CONNECT v10 opened every round-2 file built on the real ADTI
-seed ([EXP-0004](research/EXP-0004-adti-seed-acceptance.md)). Known gap:
-editing a text node in MicroStation merges its lines; a fix is being
-tested ([EXP-0005](research/EXP-0005-text-node-editing.md)).
+seed ([EXP-0004](research/EXP-0004-adti-seed-acceptance.md)), and text
+nodes keep their lines when edited
+([EXP-0005](research/EXP-0005-text-node-editing.md)).
 
 ## How it works
 

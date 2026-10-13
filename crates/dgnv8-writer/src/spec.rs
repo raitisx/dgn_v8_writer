@@ -177,9 +177,9 @@ pub enum GeometrySpec {
         line_pitch: Option<f64>,
         #[serde(default)]
         node_number: Option<u32>,
-        /// EXPERIMENT H-N04: `"none"`, `"line_breaks"` or `"full"`.
+        /// `"none"`, `"line_breaks"` or `"full"`; default by profile (FN-N03).
         #[serde(default)]
-        experiment_linkages: NodeLinkages,
+        linkages: Option<NodeLinkages>,
         #[serde(flatten)]
         style: TextStyleSpec,
     },
@@ -426,7 +426,7 @@ fn to_element(
             line_spacing,
             line_pitch,
             node_number,
-            experiment_linkages,
+            linkages,
             style,
         } => {
             let height = style.height.unwrap_or(defaults.text_height);
@@ -487,7 +487,7 @@ fn to_element(
                     height: distance(height),
                 },
                 lines: node_lines,
-                linkages: *experiment_linkages,
+                linkages: linkages.unwrap_or(NodeLinkages::default_for(profile)),
             }
         }
         GeometrySpec::ComplexChain { parts } | GeometrySpec::ComplexShape { parts } => {
@@ -663,11 +663,14 @@ mod tests {
             origin,
             style,
             lines,
+            linkages,
             ..
         } = &node.geometry
         else {
             panic!("not a text node");
         };
+        // FN-N03: line-break linkages unless the job says otherwise.
+        assert_eq!(*linkages, NodeLinkages::LineBreaks);
         assert_eq!(*origin, Point2::new(100_000.0, 202_500.0));
         assert_eq!(lines[1].1.origin, Point2::new(100_000.0, 192_500.0));
         assert_eq!(
@@ -682,12 +685,17 @@ mod tests {
         assert_eq!(origin, Point2::new(100_000.0, 192_500.0));
         let centred = json.replace("\"font\"", "\"justification\": 7, \"font\"");
         assert!(build_with(Profile::MicroStation, &centred).is_err());
-        // The Oda profile keeps the first line's origin (FN-N01).
+        // The Oda profile keeps the first line's origin (FN-N01) and writes
+        // no linkages.
         let node = build_with(Profile::Oda, json).unwrap();
-        let Geometry::TextNode { origin, .. } = node.geometry else {
+        let Geometry::TextNode {
+            origin, linkages, ..
+        } = node.geometry
+        else {
             panic!("not a text node");
         };
         assert_eq!(origin, Point2::new(100_000.0, 200_000.0));
+        assert_eq!(linkages, NodeLinkages::None);
     }
 
     #[test]
