@@ -61,7 +61,7 @@ products.
 | Cell, unnamed | 2 | FN-C01, FN-C03 | Origin, scale, angle, element count (T05) | Displays (R03) |
 | Cell, named | 2 | FN-C02, FN-C03 | Name shown (T06) | ASCII and Latvian names, rotation, scale (R03) |
 | Shared cell | 35/34 | — | Not started | Not needed: ADTI symbols are normal cells |
-| Added level | 95 | FN-V03, H-V04 | — | In round 4 (EXP-0006) |
+| Added level | 95 | FN-V03, FN-V04 | — | Listed, used, hidden, deleted, kept through save; Latvian names (EXP-0006) |
 
 "—" means not tested in that round.
 
@@ -75,8 +75,8 @@ the writer supports.
 ## Open questions, in order
 
 1. Text node justifications other than 0, 1 and 2 need line lengths.
-2. Added levels (FN-V03, EXP-0006): does MicroStation accept them, and how
-   are a level's own colour, weight and style stored (optional E6)?
+2. A level's own colour, weight and style, and its Level Manager number:
+   added levels copy Default's (EXP-0006 obs. 4; optional E6).
 3. Page size limits for large drawings (E5, not made yet).
 4. Text width as MicroStation computes it, for centred and right-justified
    placement (EXP-0003 obs. 6 gives one data point).

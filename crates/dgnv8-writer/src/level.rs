@@ -45,7 +45,7 @@ impl NewLevel {
 }
 
 /// String payload as MicroStation writes level names: `ff fe 01 00` + 8-bit
-/// for ASCII (EXP-0003 E4), `ff fe` + UTF-16LE otherwise (FN-L03, H-V04).
+/// for ASCII (EXP-0003 E4), `ff fe` + UTF-16LE otherwise (FN-L03, FN-V04).
 fn name_payload(text: &str) -> Vec<u8> {
     if text.is_ascii() {
         [&ESCAPED_CODEPAGE_MARKER[..], text.as_bytes()].concat()

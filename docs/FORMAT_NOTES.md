@@ -516,7 +516,7 @@ Evidence: EXP-0004 obs. 7; unit test
 `spec::tests::level_names_and_by_level_resolve`.
 
 ### FN-V03 Adding a level
-Status: Provisional. Observed in E4, where MicroStation added a library
+Status: Confirmed. Observed in E4, where MicroStation added a library
 level to the file: the new type-95 entry goes into the level table in
 level-ID order (ID 1 before "Default", 64); the table header's entry count
 at 0x20 grows by one; the level gets the lowest free level ID (1, although
@@ -529,16 +529,25 @@ Default's. Name and description are written as MicroStation wrote them in
 E4 (`ff fe 01 00` + ASCII). The writer adds a level only when the job lists
 it under `levels` and the seed lacks it; it refuses a name that differs
 from an existing one only in letter case.
-Evidence: EXP-0003 obs. 9 (E1→E4 diff); unit test
+MicroStation: CONNECT v10 lists four levels added this way with their
+numbers, names and descriptions, shows elements on them, hides them with
+Level Display, lets the unused one be deleted, and keeps everything through
+its own save and reopen (EXP-0006).
+Evidence: EXP-0003 obs. 9 (E1→E4 diff); EXP-0006; unit test
 `level::tests::entry_copies_template_and_replaces_ids_and_names`; test
-`roundtrip::added_levels_are_in_the_level_table`; MicroStation check in
-EXP-0006 (pending).
+`roundtrip::added_levels_are_in_the_level_table`.
+
+### FN-V04 Non-ASCII level names
+Status: Confirmed. A level name or description with letters outside ASCII
+is written as `ff fe` + UTF-16LE, the form MicroStation uses for text
+(FN-T07).
+MicroStation: shows the level `ZZ_LĪMENIS_Ā` and the descriptions
+`Pārbaudes līmenis A` and `Latviešu burti nosaukumā` correctly (EXP-0006).
+Evidence: EXP-0006 obs. 2.
 
 ### H-V04 Non-ASCII level names
-Status: Hypothesis. A level name or description with letters outside ASCII
-is written as `ff fe` + UTF-16LE, the form MicroStation uses for text
-(FN-T07); no MicroStation-written linkage of this form has been seen.
-Evidence: none yet; tested in EXP-0006 (level `ZZ_LĪMENIS_Ā`).
+Status: Promoted to FN-V04.
+Evidence: EXP-0006.
 
 ## Model header (`Dgn~Mh`)
 

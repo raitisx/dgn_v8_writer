@@ -2,13 +2,13 @@
 
 | Field | Value |
 | --- | --- |
-| Date | _pending_ |
+| Date | 2026-10-14 |
 | Performed by | raitisx (licensed MicroStation seat) |
 | Product | MicroStation CONNECT Edition (v10), as in EXP-0004 |
 | Seed | The empty ADTI LKS-2020 seed, E1 of EXP-0003 (SHA-256 `431af1fd…a757c8`) |
 | Files tested | `R07_new_levels.dgn`, built with `testfiles/adti_jobs/R07_new_levels.json`; SHA-256 `dbaf5124db740bfd3fdad61db2560f8acee77cfa673ff0f743021d8d957f1461` |
 | Storage | Not in this repository (contains VZD seed content); rebuild as described in EXP-0004 |
-| Status | Pending |
+| Status | Done: added levels work in MicroStation. Open: the number of a level created in Level Manager (obs. 4) |
 | Decides | FN-V03 (adding a level by copying the seed's "Default" entry), H-V04 (non-ASCII level names) |
 
 ## Why
@@ -57,4 +57,30 @@ weight 2 and line style 2, save it as E6, and upload it like E1–E4.
 
 ## Results
 
-_pending_
+Tester's answers, in checklist order: "1. yes 2. yes 3. yes. yes. yes.
+4. yes 5. yes. no number. 6. yes".
+
+| Check | Result |
+| --- | --- |
+| 1. Opens | Yes, without messages |
+| 2. Level Manager lists the four levels with numbers 1–4, names and descriptions, Latvian letters included | Yes |
+| 3. Elements on the expected levels (ZZ_TEST_A; ZZ_TEST_B; ZZ_LĪMENIS_Ā) | Yes, yes, yes |
+| 4. Switching ZZ_TEST_B off hides only the shape and the text node | Yes |
+| 5. Delete ZZ_UNUSED; number of a level created afterwards | Deleting is allowed; the new level shows "no number" |
+| 6. Line placed on ZZ_TEST_A, save, close, reopen | Everything still there |
+
+## Observations
+
+1. MicroStation CONNECT v10 accepts levels added as copies of the seed's
+   "Default" entry: it lists them, uses them for display, element
+   assignment and level display, and keeps them through its own save
+   (FN-V03).
+2. Names and descriptions with Latvian letters, written as `ff fe` +
+   UTF-16LE, display correctly (H-V04, now FN-V04).
+3. A copied level can be deleted, so the copy does not carry a "Default
+   cannot be deleted" protection.
+4. A level created in Level Manager afterwards shows "no number". Level
+   Manager's number column may be a separate level code rather than the ID
+   at 0x20; which ID MicroStation gave that level is not known yet. The
+   file the tester saved in step 6 would show it, and how MicroStation
+   writes a level of its own.
