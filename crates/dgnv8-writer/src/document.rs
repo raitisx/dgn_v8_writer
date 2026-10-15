@@ -35,6 +35,26 @@ pub struct WriteOptions {
 }
 
 /// A seed plus the elements to append to one of its models.
+///
+/// ```no_run
+/// use dgnv8_writer::element::{Element, Geometry, Symbology};
+/// use dgnv8_writer::{Document, WriteOptions};
+///
+/// # fn main() -> dgnv8_writer::Result<()> {
+/// let mut doc = Document::from_seed_path("adti_seed.dgn", None)?;
+/// let level = doc.ensure_level("MY_LEVEL", Some("Mans līmenis"))?;
+/// let start = doc.master_to_uor(506_000.0, 312_000.0);
+/// let end = doc.master_to_uor(506_010.0, 312_005.0);
+/// doc.add(Element {
+///     symbology: Symbology { level, color: 3, ..Symbology::default() },
+///     geometry: Geometry::Line { start, end },
+///     extra_flags: 0,
+/// });
+/// let report = doc.save("out.dgn", &WriteOptions::default())?;
+/// println!("wrote elements {}..={}", report.first_element_id, report.last_element_id);
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone)]
 pub struct Document {
     seed: Vec<u8>,

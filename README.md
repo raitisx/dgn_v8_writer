@@ -7,38 +7,26 @@ record of where every piece of format knowledge comes from.
 round-1 test file (built on GDAL's sample) and showed the elements as
 written ([EXP-0002](research/EXP-0002-microstation-acceptance.md)).
 MicroStation CONNECT v10 opened every round-2 file built on the real ADTI
-seed ([EXP-0004](research/EXP-0004-adti-seed-acceptance.md)), and text
-nodes keep their lines when edited
-([EXP-0005](research/EXP-0005-text-node-editing.md)).
+seed ([EXP-0004](research/EXP-0004-adti-seed-acceptance.md)); text nodes
+keep their lines when edited
+([EXP-0005](research/EXP-0005-text-node-editing.md)), and levels the
+writer adds work like MicroStation's own
+([EXP-0006](research/EXP-0006-new-levels.md)).
 
-## How it works
+## Documentation
 
-The writer takes a seed DGN (for ADTI: the official LKS-2020 seed, which you
-supply) and appends 2D elements to one of its models. Everything it does not
-need to change is copied byte for byte. See [docs/SCOPE.md](docs/SCOPE.md).
-
-Supported so far: line, line string, shape, curve, circle/ellipse, arc,
-complex chain, complex shape, text, text node and cell. Status per element
-is in the scope document.
-
-## Testing in MicroStation
-
-Test files and a checklist are in [testfiles/](testfiles/README.md). No
-coding is needed.
-
-## Traceability
-
-- [docs/FORMAT_NOTES.md](docs/FORMAT_NOTES.md): every byte-level rule, its
-  status and its evidence.
-- [docs/PROVENANCE.md](docs/PROVENANCE.md): allowed and forbidden sources,
-  evidence inventory with hashes, AI-assistance policy.
-- [research/](research/): one record per experiment.
-- `tools/check_trace.py` (run in CI) checks that code cites only documented
-  rules, and that each rule has evidence.
-- `crates/dgnv8-writer/tests/golden.rs`: the encoders reproduce objects of
-  GDAL's public V8 test file byte for byte.
-- `crates/dgnv8-writer/tests/roundtrip.rs`: output is read back with the
-  independent [ezdgn](https://github.com/monozukuri-ai/ezdgn) reader.
+| Document | For |
+| --- | --- |
+| [docs/HANDOVER.md](docs/HANDOVER.md) | **Start here**: status, getting started, integration, rules to keep, open questions |
+| [docs/JOB_FORMAT.md](docs/JOB_FORMAT.md) | Every option of the JSON job that `dgnv8w build` reads |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the code works, tests, and how to add a feature |
+| [docs/SCOPE.md](docs/SCOPE.md) | What is in and out of scope, element status per test round |
+| [docs/FORMAT_NOTES.md](docs/FORMAT_NOTES.md) | Every byte-level rule with its status and evidence |
+| [docs/PROVENANCE.md](docs/PROVENANCE.md) | Allowed and forbidden sources, evidence inventory, AI-assistance policy |
+| [docs/UPSTREAM.md](docs/UPSTREAM.md) | Findings to offer the ezdgn maintainer |
+| [research/](research/) | One record per experiment; inspection scripts in [research/tools/](research/tools/README.md) |
+| [testfiles/README.md](testfiles/README.md) | The MicroStation test rounds and how to rebuild their files |
+| [examples/](examples/README.md) | Two jobs to start from |
 
 ## Command line
 
@@ -48,19 +36,30 @@ target/release/dgnv8w inspect seed.dgn        # what the writer sees in a seed
 target/release/dgnv8w build job.json          # append the job's elements
 ```
 
-A job is a JSON file naming the seed, the output and the elements, in master
-units (metres) and degrees. Examples: [testfiles/jobs/](testfiles/jobs/)
-(GDAL sample) and [testfiles/adti_jobs/](testfiles/adti_jobs/) (ADTI seed,
-which you supply as `private/adti_seed.dgn`).
+Ready-built bundles for Windows, Linux and macOS come from the **Package**
+workflow (Actions tab), or from releases.
 
-- `"profile"`: the default `"microstation"` writes elements the way
-  MicroStation itself stores them in the ADTI seed; `"oda"` keeps the
-  round-1 conventions of GDAL's ODA-written sample.
-- `"level"` is a level ID or a level name from the seed's level table
-  (`dgnv8w inspect` lists them). A job can add levels the seed lacks by
-  listing them under `"levels"`, each with a `"name"` and an optional
-  `"description"`; other unknown levels are refused.
-- `"color"`, `"weight"` and `"style"` take a number or `"by_level"`.
+## How it works
+
+The writer takes a seed DGN (for ADTI: the official LKS-2020 seed, which you
+supply) and appends 2D elements to one of its models, adding levels when
+the job asks for them. Everything it does not need to change is copied byte
+for byte.
+
+Supported: line, line string, shape, curve, circle/ellipse, arc, complex
+chain, complex shape, text, text node and normal cell, with levels by name,
+ByLevel symbology and Latvian text.
+
+## Traceability
+
+- `tools/check_trace.py` (run in CI) checks that code cites only documented
+  rules, and that each rule has evidence.
+- `crates/dgnv8-writer/tests/golden.rs`: the encoders reproduce objects of
+  GDAL's public V8 test file byte for byte.
+- `crates/dgnv8-writer/tests/roundtrip.rs`: output is read back with the
+  independent [ezdgn](https://github.com/monozukuri-ai/ezdgn) reader.
+- `tools/build_testfiles.sh`: every file tested in MicroStation rebuilds
+  byte for byte from its job.
 
 ## Licence
 
