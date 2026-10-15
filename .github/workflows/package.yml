@@ -1,0 +1,62 @@
+name: Package
+
+# Builds the dgnv8w bundle (program, docs, examples, inspection scripts) for
+# Windows, Linux and macOS. Every run keeps the bundles as workflow artifacts;
+# a pushed tag v* also attaches them to a GitHub release.
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Tests
+        run: cargo test
+
+      - name: Bundle
+        run: tools/package.sh
+
+      - name: Bundle runs its example
+        run: |
+          cd dist/dgnv8w-*/
+          ./dgnv8w build examples/gdal_example.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dgnv8w-${{ matrix.os }}
+          path: dist/*.tar.gz
+          retention-days: 30
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: bundle
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: bundles
+          merge-multiple: true
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" bundles/*.tar.gz --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --notes "See docs/HANDOVER.md in the bundle."

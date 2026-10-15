@@ -117,8 +117,10 @@ is `R07_new_levels.dgn`, levels added by the writer; its checklist is in
 
 To rebuild them yourself: copy the empty ADTI seed (E1) to
 `private/adti_seed.dgn` in this repository, then run
-`dgnv8w build testfiles/adti_jobs/<name>.json`. The outputs land in
-`private/round2/`, which git ignores.
+`tools/build_testfiles.sh --adti`. The outputs land in `private/round2/`,
+which git ignores, and are checked against
+`testfiles/adti_jobs/SHA256SUMS`, the hashes of the files tested in
+MicroStation.
 
 ## Licence of these files
 
