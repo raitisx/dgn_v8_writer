@@ -1,0 +1,22 @@
+{
+  "seed": "../private/adti_seed.dgn",
+  "output": "../private/adti_example.dgn",
+  "levels": [
+    { "name": "EXAMPLE_LINES", "description": "Līnijas" },
+    { "name": "EXAMPLE_TEXT", "description": "Teksti" },
+    { "name": "EXAMPLE_SYMBOLS" }
+  ],
+  "defaults": { "level": "EXAMPLE_LINES", "color": "by_level", "weight": "by_level", "style": "by_level",
+                "font": 1025, "text_height": 0.25 },
+  "elements": [
+    { "type": "line_string", "points": [[506000, 312000], [506010, 312004], [506020, 312001]] },
+    { "type": "shape", "points": [[506000, 312010], [506008, 312010], [506008, 312016], [506000, 312016]], "color": 3 },
+    { "type": "arc", "center": [506030, 312005], "primary": 4, "start_deg": 0, "sweep_deg": 120 },
+    { "type": "text", "text": "Brīvības iela 1", "origin": [506001, 312012], "level": "EXAMPLE_TEXT" },
+    { "type": "text_node", "lines": ["Glāžšķūņa", "dzelzceļš"], "origin": [506012, 312014],
+      "line_spacing": 0.125, "level": "EXAMPLE_TEXT" },
+    { "type": "cell", "name": "EXAMPLE_SYMBOL", "origin": [506025, 312015], "rotation_deg": 15, "level": "EXAMPLE_SYMBOLS", "parts": [
+        { "type": "circle", "center": [0, 0], "radius": 0.5 },
+        { "type": "line", "points": [[-0.5, 0], [0.5, 0]] } ] }
+  ]
+}

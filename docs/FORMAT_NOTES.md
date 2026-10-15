@@ -420,7 +420,9 @@ Evidence: golden tests 61, 82; EXP-0002 T01, T07.
 Status: Confirmed. Type 2 (2D, 0xc0 bytes): u32 component count at 0x68,
 u32 = 1 at 0x6c, range low (x, y) at 0x70, range high (x, y) at 0x80, 2×2
 matrix at 0x90, origin (x, y) at 0xb0. Components are stored in model
-coordinates. Header on level 0, as in all three samples. The `oda` profile
+coordinates. Header on level 0, as in all three samples, including
+MicroStation's own cell in E4; a job's level for a cell goes to its
+components. The `oda` profile
 writes the 0x70 range in model coordinates, as round 1 did; the GDAL cell's
 origin is 0,0, so it cannot tell model from cell coordinates, and
 MicroStation's own cells use cell coordinates (FN-C03).

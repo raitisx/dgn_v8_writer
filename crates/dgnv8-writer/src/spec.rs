@@ -350,14 +350,15 @@ fn to_element(
     placement: Placement,
 ) -> Result<Element> {
     let (document, profile) = (target.document, target.profile);
-    // Cell headers default to level 0, as in all three sample cells (FN-C01).
-    let default_level = if matches!(spec.geometry, GeometrySpec::Cell { .. }) {
-        LevelSpec::Id(0)
+    // A cell header is on level 0, as in all three sample cells and in
+    // MicroStation's own cell (FN-C01); a cell's "level" goes to its parts.
+    let level = if matches!(spec.geometry, GeometrySpec::Cell { .. }) {
+        0
     } else {
-        defaults.level.clone()
+        target.resolve_level(spec.level.as_ref().unwrap_or(&defaults.level))?
     };
     let symbology = Symbology {
-        level: target.resolve_level(spec.level.as_ref().unwrap_or(&default_level))?,
+        level,
         color: spec.color.unwrap_or(defaults.color).resolve(COLOR_BY_LEVEL),
         weight: spec
             .weight
@@ -716,6 +717,29 @@ mod tests {
     }
 
     #[test]
+    fn every_job_file_in_the_repository_parses() {
+        // Keeps the documented examples and test jobs in step with the format.
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let mut count = 0;
+        for dir in ["testfiles/jobs", "testfiles/adti_jobs", "examples"] {
+            for entry in std::fs::read_dir(root.join(dir)).unwrap() {
+                let path = entry.unwrap().path();
+                if path
+                    .extension()
+                    .is_some_and(|extension| extension == "json")
+                {
+                    let text = std::fs::read_to_string(&path).unwrap();
+                    if let Err(error) = serde_json::from_str::<JobSpec>(&text) {
+                        panic!("{}: {error}", path.display());
+                    }
+                    count += 1;
+                }
+            }
+        }
+        assert!(count >= 27, "found only {count} job files");
+    }
+
+    #[test]
     fn complex_parts_inherit_parent_symbology() {
         let shape = build(
             r#"{ "type": "complex_shape", "color": 4, "weight": 2, "parts": [
@@ -734,6 +758,16 @@ mod tests {
         );
         assert_eq!(cell.symbology.level, 0);
         assert_eq!(part_colors(&cell), [2]);
+        match &cell.geometry {
+            Geometry::Cell { children, .. } => assert_eq!(children[0].symbology.level, 64),
+            other => panic!("unexpected {other:?}"),
+        }
+        // A cell's level goes to its parts; the header stays on 0 (FN-C01).
+        let cell = build(
+            r#"{ "type": "cell", "origin": [5, 5], "level": "Default", "parts": [
+                { "type": "line", "points": [[0, 0], [1, 0]] } ] }"#,
+        );
+        assert_eq!(cell.symbology.level, 0);
         match &cell.geometry {
             Geometry::Cell { children, .. } => assert_eq!(children[0].symbology.level, 64),
             other => panic!("unexpected {other:?}"),

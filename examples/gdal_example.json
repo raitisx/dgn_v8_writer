@@ -1,0 +1,16 @@
+{
+  "profile": "oda",
+  "seed": "../crates/dgnv8-writer/tests/data/gdal_test_dgnv8.dgn",
+  "output": "gdal_example.dgn",
+  "allow_3d_model": true,
+  "defaults": { "level": "Default", "color": 3, "font": 1024, "text_height": 1.0 },
+  "elements": [
+    { "type": "line", "points": [[20, 0], [30, 5]] },
+    { "type": "circle", "center": [35, 2], "radius": 2, "color": 5 },
+    { "type": "text", "text": "Rīga ĀČĒĢĪĶĻŅŠŪŽ", "origin": [20, 10] },
+    { "type": "text_node", "lines": ["First line", "Second line"], "origin": [20, 15] },
+    { "type": "cell", "name": "EXAMPLE", "origin": [45, 2], "parts": [
+        { "type": "shape", "points": [[-1, -1], [1, -1], [1, 1], [-1, 1]] },
+        { "type": "line", "points": [[-1, -1], [1, 1]] } ] }
+  ]
+}
