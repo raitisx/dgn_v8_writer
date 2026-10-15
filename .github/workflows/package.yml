@@ -60,11 +60,21 @@ jobs:
             pkg install -y rust bash git
             git config --global --add safe.directory '*'
           run: |
-            freebsd-version
-            rustc --version
-            cargo test
+            set -e
+            report=freebsd-report.txt
+            echo "system: $(freebsd-version)" > $report
+            echo "rust: $(rustc --version)" >> $report
+            cargo test > test.log 2>&1 || { cat test.log; exit 1; }
+            grep "test result" test.log | sed 's/^/tests: /' >> $report
             bash tools/package.sh
-            cd dist/dgnv8w-*/ && ./dgnv8w build examples/gdal_example.json
+            cd dist/dgnv8w-*/
+            ./dgnv8w build examples/gdal_example.json | head -1 | sed 's/^/example: /' >> ../../$report
+
+      - name: Report what the virtual machine did
+        run: |
+          test -s freebsd-report.txt
+          while IFS= read -r line; do echo "::notice title=FreeBSD::$line"; done < freebsd-report.txt
+          for bundle in dist/*.tar.gz; do echo "::notice title=FreeBSD bundle::$bundle"; done
 
       - uses: actions/upload-artifact@v4
         with:
