@@ -109,7 +109,8 @@ job files and calling `dgnv8w build` is simpler. API documentation:
 
 CI (`.github/workflows/ci.yml`) runs everything except the last layer and
 the `--adti` rebuild on every push. `.github/workflows/package.yml` builds
-the release bundles for Windows, Linux and macOS.
+the release bundles for Windows, Linux, macOS and FreeBSD (the last in a
+FreeBSD virtual machine, with the full test suite).
 
 ## Adding a feature
 

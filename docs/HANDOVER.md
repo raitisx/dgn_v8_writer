@@ -45,9 +45,9 @@ every push.
 ## Getting started
 
 Without Rust: download a bundle from the repository's **Actions → Package**
-run (Windows, Linux or macOS), or from a release if one has been tagged.
-Each bundle holds `dgnv8w`, these docs, examples and the inspection scripts
-(see `BUNDLE.md` inside).
+run (Windows, Linux, macOS or FreeBSD), or from a release if one has been
+tagged. Each bundle holds `dgnv8w`, these docs, examples and the inspection
+scripts (see `BUNDLE.md` inside).
 
 With Rust 1.83 or newer:
 

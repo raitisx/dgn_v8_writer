@@ -36,7 +36,7 @@ target/release/dgnv8w inspect seed.dgn        # what the writer sees in a seed
 target/release/dgnv8w build job.json          # append the job's elements
 ```
 
-Ready-built bundles for Windows, Linux and macOS come from the **Package**
+Ready-built bundles for Windows, Linux, macOS and FreeBSD come from the **Package**
 workflow (Actions tab), or from releases.
 
 ## How it works
